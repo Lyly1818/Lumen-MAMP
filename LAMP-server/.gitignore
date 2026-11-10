@@ -1,0 +1,16 @@
+# !!!
+.env*
+mongoDevKeyfile.txt
+migrationDataReportLatest.json
+
+# !!
+node_modules/
+build/
+coverage/
+
+# !
+.DS_Store
+*.sublime-project
+*.sublime-workspace
+.ipynb_checkpoints
+.idea/

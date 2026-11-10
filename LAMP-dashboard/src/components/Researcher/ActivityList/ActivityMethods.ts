@@ -1,0 +1,2702 @@
+import LAMP from "lamp-core"
+import { Service } from "../../DBService/DBService"
+import i18n from "./../../../i18n"
+import { games } from "./Activity"
+import AutoSuggest from "../../shared/AutoSuggest"
+
+function geFeedBackSettings() {
+  return {
+    feedback_text: {
+      type: "string",
+      title: i18n.t("Feedback Text"),
+      maxLength: 500,
+      "ui:widget": "textarea",
+      "ui:options": {
+        rows: 3,
+      },
+      description: i18n.t("This text will be shown to the participant after the input."),
+    },
+  }
+}
+
+function geProConsSettings() {
+  return {
+    pros: {
+      type: "string",
+      title: i18n.t("Pros"),
+      maxLength: 500,
+    },
+    cons: {
+      type: "string",
+      title: i18n.t("Cons"),
+      maxLength: 500,
+    },
+  }
+}
+
+function getContingencySettings() {
+  const enumIds = localStorage.getItem("enumIds")
+  const enumNames = localStorage.getItem("enumNames")
+
+  if (!enumIds || JSON.parse(enumIds).length === 0) return {}
+
+  return {
+    contigencySettings: {
+      type: "object",
+      title: "Contigency Settings",
+      required: ["enable_contigency"],
+      properties: {
+        enable_contigency: {
+          type: "boolean",
+          title: "Enable Contigency",
+          default: false,
+        },
+      },
+      dependencies: {
+        enable_contigency: {
+          oneOf: [
+            {
+              properties: {
+                enable_contigency: { const: true },
+                contigency_type: {
+                  type: "string",
+                  enum: ["activity", "question"],
+                  enumNames: [i18n.t("Activity"), i18n.t("Question")],
+                  default: "activity",
+                },
+              },
+              required: ["contigency_type"],
+            },
+            {
+              properties: {
+                enable_contigency: { const: false },
+              },
+            },
+          ],
+        },
+        contigency_type: {
+          allOf: [
+            {
+              if: {
+                properties: { contigency_type: { const: "activity" } },
+              },
+              then: {
+                properties: {
+                  activity: {
+                    type: "string",
+                    title: "Select an activity",
+                    enum: enumIds ? JSON.parse(enumIds) : [],
+                    enumNames: enumNames ? JSON.parse(enumNames) : [],
+                  },
+                },
+                required: ["activity"],
+              },
+            },
+            {
+              if: {
+                properties: { contigency_type: { const: "question" } },
+              },
+              then: {
+                properties: {
+                  question_index: {
+                    type: "number",
+                    title: "Question number",
+                    minimum: 1,
+                  },
+                },
+                required: ["question_index"],
+              },
+            },
+          ],
+        },
+      },
+    },
+  }
+}
+export const SchemaList = () => {
+  return {
+    "lamp.spin_wheel": {
+      type: "object",
+      properties: {
+        settings: {
+          title: i18n.t("Activity Settings"),
+          type: "object",
+          required: ["low_risk", "high_risk", "spins_per_game", "balance"],
+          properties: {
+            low_risk: {
+              title: i18n.t("Low Risk"),
+              type: "array",
+              minItems: 1,
+              items: {
+                type: "object",
+                required: ["win", "loose", "zero"],
+                properties: {
+                  win: {
+                    title: i18n.t("Win"),
+                    type: "object",
+                    required: ["sum", "probability"],
+                    properties: {
+                      sum: {
+                        title: i18n.t("Sum"),
+                        type: "number",
+                        default: 50,
+                        enum: [50, 100, 250],
+                      },
+                      probability: {
+                        title: i18n.t("Probability"),
+                        type: "number",
+                        default: 50,
+                        enum: [0, 25, 50, 75],
+                      },
+                    },
+                  },
+                  loose: {
+                    title: i18n.t("Loose"),
+                    type: "object",
+                    required: ["sum", "probability"],
+                    properties: {
+                      sum: {
+                        title: i18n.t("Sum"),
+                        type: "number",
+                        default: 50,
+                        enum: [50, 100, 250],
+                      },
+                      probability: {
+                        title: i18n.t("Probability"),
+                        type: "number",
+                        default: 50,
+                        enum: [0, 25, 50, 75],
+                      },
+                    },
+                  },
+                  zero: {
+                    title: i18n.t("Zero"),
+                    type: "object",
+                    required: ["sum", "probability"],
+                    properties: {
+                      sum: {
+                        title: i18n.t("Sum"),
+                        type: "number",
+                        default: 0,
+                        enum: [0],
+                      },
+                      probability: {
+                        title: i18n.t("Probability"),
+                        type: "number",
+                        default: 50,
+                        enum: [0, 25, 50, 75],
+                      },
+                    },
+                  },
+                },
+              },
+              "ui:options": {
+                addable: false,
+                removable: false,
+                orderable: false,
+              },
+              "ui:grid": {
+                xs: 6,
+              },
+            },
+            high_risk: {
+              title: i18n.t("High Risk"),
+              type: "array",
+              minItems: 1,
+              items: {
+                type: "object",
+                required: ["win", "loose", "zero"],
+                properties: {
+                  win: {
+                    title: i18n.t("Win"),
+                    type: "object",
+                    required: ["sum", "probability"],
+                    properties: {
+                      sum: {
+                        title: i18n.t("Sum"),
+                        type: "number",
+                        default: 100,
+                        enum: [50, 100, 250],
+                      },
+                      probability: {
+                        title: i18n.t("Probability"),
+                        type: "number",
+                        default: 50,
+                        enum: [0, 25, 50, 75],
+                      },
+                    },
+                  },
+                  loose: {
+                    title: i18n.t("Loose"),
+                    type: "object",
+                    required: ["sum", "probability"],
+                    properties: {
+                      sum: {
+                        title: i18n.t("Sum"),
+                        type: "number",
+                        default: 250,
+                        enum: [50, 100, 250],
+                      },
+                      probability: {
+                        title: i18n.t("Probability"),
+                        type: "number",
+                        default: 50,
+                        enum: [0, 25, 50, 75],
+                      },
+                    },
+                  },
+                  zero: {
+                    type: "object",
+                    title: i18n.t("Zero"),
+
+                    required: ["sum", "probability"],
+                    properties: {
+                      sum: {
+                        title: i18n.t("Sum"),
+                        type: "number",
+                        default: 0,
+                        enum: [0],
+                      },
+                      probability: {
+                        title: i18n.t("Probability"),
+                        type: "number",
+                        default: 50,
+                        enum: [0, 25, 50, 75],
+                      },
+                    },
+                  },
+                },
+              },
+              "ui:options": {
+                addable: false,
+                removable: false,
+                orderable: false,
+              },
+              "ui:grid": {
+                xs: 6,
+              },
+            },
+            spins_per_game: {
+              title: i18n.t("Spins per game"),
+              type: "number",
+              minimum: 1,
+              maximum: 100,
+              default: 20,
+              "ui:grid": {
+                xs: 6,
+              },
+            },
+            balance: {
+              title: i18n.t("Starting Balance"),
+              type: "number",
+              default: 2000,
+              "ui:grid": {
+                xs: 6,
+              },
+            },
+          },
+        },
+      },
+    },
+    "lamp.balloon_risk": {
+      type: "object",
+      properties: {
+        settings: {
+          title: i18n.t("Activity Settings"),
+          type: "object",
+          required: ["balloon_count", "breakpoint_mean", "breakpoint_std"],
+          properties: {
+            balloon_count: {
+              title: i18n.t("Balloon Count"),
+              description: i18n.t("The number of balloons to display."),
+              type: "number",
+              default: 15,
+              minimum: 1,
+              maximum: 100,
+              "ui:grid": {
+                xs: 4,
+              },
+            },
+            breakpoint_mean: {
+              title: i18n.t("Breakpoint Mean"),
+              description: i18n.t("The mean of the breakpoint for balloon risk."),
+              type: "number",
+              default: 64.5,
+              minimum: 1,
+              maximum: 100,
+              "ui:grid": {
+                xs: 4,
+              },
+            },
+            breakpoint_std: {
+              title: i18n.t("Breakpoint Standard Deviation"),
+              description: i18n.t("The standard deviation of the breakpoint for balloon risk."),
+              type: "number",
+              default: 37,
+              maximum: 100,
+              minimum: 1,
+              "ui:grid": {
+                xs: 4,
+              },
+            },
+          },
+        },
+      },
+    },
+    "lamp.trails_b": {
+      type: "object",
+      properties: {
+        settings: {
+          title: i18n.t("Activity Settings"),
+          type: "object",
+          required: ["level1dot_count", "level2_dot_count", "level1_timeout", "level2_timeout"],
+          properties: {
+            level1dot_count: {
+              title: i18n.t("Number of dots for Level 1"),
+              type: "number",
+              enum: [10, 12],
+              enumNames: [i18n.t("10"), i18n.t("12")],
+              "ui:grid": {
+                xs: 4,
+              },
+            },
+            level2_dot_count: {
+              title: i18n.t("Number of dots for Level 2"),
+              type: "number",
+              enum: [20, 24],
+              enumNames: [i18n.t("20"), i18n.t("24")],
+              "ui:grid": {
+                xs: 4,
+              },
+            },
+            level1_timeout: {
+              title: i18n.t("Timeout period for Level 1"),
+              description: i18n.t("Seconds"),
+              type: "number",
+              enum: [60, 90, 120],
+              enumNames: [i18n.t("60"), i18n.t("90"), i18n.t("120")],
+              default: 2,
+              "ui:grid": {
+                xs: 4,
+              },
+            },
+            level2_timeout: {
+              title: i18n.t("Timeout period for Level 2"),
+              description: i18n.t("Seconds"),
+              type: "number",
+              enum: [90, 120, 180],
+              enumNames: [i18n.t("90"), i18n.t("120"), i18n.t("180")],
+              default: 2,
+              "ui:grid": {
+                xs: 4,
+              },
+            },
+          },
+        },
+      },
+    },
+    "lamp.funny_memory": {
+      type: "object",
+      properties: {
+        settings: {
+          title: i18n.t("Activity Settings"),
+          type: "object",
+          required: ["delayBeforeRecall", "numberOfTrials", "imageExposureTime"],
+          properties: {
+            delayBeforeRecall: {
+              title: i18n.t("Delay before recall"),
+              description: i18n.t("Minutes"),
+              type: "number",
+              enum: [1, 2, 3, 5],
+              enumNames: [i18n.t("1"), i18n.t("2"), i18n.t("3"), i18n.t("5")],
+              "ui:grid": {
+                xs: 4,
+              },
+              default: 1,
+            },
+            numberOfTrials: {
+              title: i18n.t("Number of Learning trials"),
+              type: "number",
+              enum: [1, 2, 3],
+              enumNames: [i18n.t("1"), i18n.t("2"), i18n.t("3")],
+              "ui:grid": {
+                xs: 4,
+              },
+              default: 1,
+            },
+            imageExposureTime: {
+              title: i18n.t("Image Exposure Time"),
+              description: i18n.t("Seconds"),
+              type: "number",
+              enum: [2, 5],
+              enumNames: [i18n.t("2"), i18n.t("5")],
+              default: 2,
+              "ui:grid": {
+                xs: 4,
+              },
+            },
+          },
+        },
+      },
+    },
+    "lamp.pop_the_bubbles": {
+      type: "object",
+      properties: {
+        settings: {
+          title: i18n.t("Activity Settings"),
+          type: "object",
+          required: ["bubble_count", "bubble_speed", "intertrial_duration", "bubble_duration"],
+          properties: {
+            bubble_count: {
+              title: i18n.t("Bubble Count"),
+              description: i18n.t("Multiple bubble counts per level."),
+              type: "array",
+              minItems: 3,
+              maxItems: 3,
+              items: {
+                title: i18n.t("Level Count"),
+                type: "number",
+                minimum: 1,
+                default: 80,
+              },
+              "ui:options": {
+                addable: false,
+                removable: false,
+                orderable: false,
+              },
+              "ui:grid": {
+                xs: 6,
+              },
+            },
+            bubble_speed: {
+              title: i18n.t("Bubble Speed"),
+              description: i18n.t("Multiple bubble speeds per level."),
+              type: "array",
+              minItems: 3,
+              maxItems: 3,
+              items: {
+                title: i18n.t("Level Speed"),
+                type: "number",
+                minimum: 1,
+                default: 80,
+              },
+              "ui:options": {
+                addable: false,
+                removable: false,
+                orderable: false,
+              },
+              "ui:grid": {
+                xs: 6,
+              },
+            },
+            intertrial_duration: {
+              title: i18n.t("Intertrial Duration"),
+              description: i18n.t("The duration between bubbles."),
+              type: "number",
+              minimum: 0,
+              default: 0.5,
+              "ui:grid": {
+                xs: 6,
+              },
+            },
+            bubble_duration: {
+              title: i18n.t("Bubble Duration"),
+              description: i18n.t("The duration the bubble appears on screen."),
+              type: "number",
+              minimum: 1,
+              default: 1.0,
+              "ui:grid": {
+                xs: 6,
+              },
+            },
+          },
+        },
+      },
+    },
+    "lamp.memory_game": {
+      type: "object",
+      properties: {
+        settings: {
+          title: i18n.t("Activity Settings"),
+          type: "object",
+          properties: {
+            foils: {
+              title: i18n.t("Foils"),
+              description: "3 from 9 :-  3x3 grid and 9 foils, 4 from 12 :-  3x3 grid and 12 foils.",
+              type: "string",
+              enum: [1, 2],
+              enumNames: [i18n.t("3 from 9"), i18n.t("4 from 12")],
+              default: 1,
+              "ui:grid": {
+                xs: 6,
+              },
+            },
+            animation_interval: {
+              title: i18n.t("Animation interval"),
+              description: i18n.t("seconds"),
+              type: "number",
+              minimum: 1,
+              maximum: 5,
+              default: 2,
+              "ui:grid": {
+                xs: 3,
+              },
+            },
+            animation_persistance: {
+              title: i18n.t("Animation persistance"),
+              description: i18n.t("seconds"),
+              type: "number",
+              minimum: 1,
+              maximum: 5,
+              default: 1,
+              "ui:grid": {
+                xs: 3,
+              },
+            },
+            encoding_trials: {
+              title: i18n.t("Encoding trials"),
+              description: "",
+              type: "number",
+              minimum: 2,
+              maximum: 5,
+              default: 2,
+              readonly: true,
+              "ui:grid": {
+                xs: 3,
+              },
+            },
+            retrieval_delay: {
+              title: i18n.t("Retrieval delay"),
+              description: i18n.t("minutes"),
+              type: "number",
+              minimum: 1,
+              maximum: 3,
+              default: 1,
+              "ui:grid": {
+                xs: 3,
+              },
+            },
+          },
+        },
+      },
+    },
+    "lamp.fragmented_letters": {
+      type: "object",
+      properties: {
+        settings: {
+          title: i18n.t("Activity Settings"),
+          type: "object",
+          properties: {
+            startingFragmentation: {
+              title: i18n.t("Starting Fragmentation"),
+              type: "string",
+              enum: ["30%", "40%", "50%"],
+              enumNames: [i18n.t("30%"), i18n.t("40%"), , i18n.t("50%")],
+              default: "30%",
+              "ui:grid": {
+                xs: 6,
+              },
+            },
+          },
+        },
+      },
+    },
+    "lamp.spatial_span": {
+      type: "object",
+      properties: {
+        settings: {
+          title: i18n.t("Activity Settings"),
+          type: "object",
+          required: ["reverse_tapping"],
+          properties: {
+            reverse_tapping: {
+              title: i18n.t("Tap Order"),
+              description: i18n.t("Whether taps are going forwards or backwards."),
+              type: "boolean",
+              enumNames: [i18n.t("Backward"), i18n.t("Forward")],
+              default: true,
+              "ui:widget": "radio",
+            },
+          },
+        },
+      },
+    },
+    "lamp.recording": {
+      type: "object",
+      properties: {
+        settings: {
+          title: i18n.t("Activity Settings"),
+          type: "object",
+          required: ["microphone_text"],
+          properties: {
+            record_label: {
+              title: i18n.t("Microphone record label"),
+              description: i18n.t("This text will be shown for record"),
+              type: "string",
+              default: "Press the microphone to record",
+            },
+            rerecord_label: {
+              title: i18n.t("Microphone re-record label"),
+              description: i18n.t("To change the default label - 'Click upload or clear to record again'."),
+              type: "string",
+              default: "Click upload or clear to record again",
+            },
+          },
+        },
+      },
+    },
+    "lamp.jewels_a": {
+      type: "object",
+      properties: {
+        settings: {
+          title: i18n.t("Activity Settings"),
+          type: "object",
+          required: [
+            "mode",
+            "variant",
+            "beginner_seconds",
+            "intermediate_seconds",
+            "advanced_seconds",
+            "expert_seconds",
+            "diamond_count",
+            "shape_count",
+            "bonus_point_count",
+          ],
+          dependencies: {
+            variant: {
+              oneOf: [
+                {
+                  properties: {
+                    variant: {
+                      const: "trails_a",
+                    },
+                  },
+                },
+                {
+                  properties: {
+                    variant: {
+                      const: "trails_b",
+                    },
+                    y_changes_in_level_count: {
+                      title: i18n.t("Y changes in level count"),
+                      description: "",
+                      type: "number",
+                      minimum: 0,
+                      maximum: 25,
+                      default: 2,
+                      "ui:grid": {
+                        xs: 3,
+                      },
+                    },
+                    y_shape_count: {
+                      title: i18n.t("Y shape count"),
+                      description: "",
+                      type: "number",
+                      minimum: 0,
+                      maximum: 4,
+                      default: 1,
+                      "ui:grid": {
+                        xs: 3,
+                      },
+                    },
+                  },
+                },
+              ],
+            },
+          },
+
+          properties: {
+            mode: {
+              title: i18n.t("Mode"),
+              description: i18n.t("The mode of the jewels game."),
+              type: "number",
+              enum: [1, 2, 3, 4],
+              enumNames: [i18n.t("Beginner"), i18n.t("Intermediate"), i18n.t("Advanced"), i18n.t("Expert")],
+              default: 1,
+              "ui:grid": {
+                xs: 6,
+              },
+            },
+            variant: {
+              title: i18n.t("Variant"),
+              description: "The variant of the Jewels game (A or B).",
+              type: "string",
+              enum: ["trails_a", "trails_b"],
+              enumNames: [i18n.t("Trails A"), i18n.t("Trails B")],
+              default: "trails_a",
+              "ui:grid": {
+                xs: 6,
+              },
+            },
+            beginner_seconds: {
+              title: i18n.t("Beginner Duration"),
+              description: i18n.t("The duration of a Jewels session on Beginner mode (in seconds)."),
+              type: "number",
+              minimum: 1,
+              maximum: 300,
+              default: 90,
+              "ui:grid": {
+                xs: 3,
+              },
+            },
+            intermediate_seconds: {
+              title: i18n.t("Intermediate Duration"),
+              description: i18n.t("The duration of a Jewels session on Intermediate mode (in seconds)."),
+              type: "number",
+              minimum: 1,
+              maximum: 300,
+              default: 30,
+              "ui:grid": {
+                xs: 3,
+              },
+            },
+            advanced_seconds: {
+              title: i18n.t("Advanced Duration"),
+              description: i18n.t("The duration of a Jewels session on Advanced mode (in seconds)."),
+              type: "number",
+              minimum: 1,
+              maximum: 300,
+              default: 25,
+              "ui:grid": {
+                xs: 3,
+              },
+            },
+            expert_seconds: {
+              title: i18n.t("Expert Duration"),
+              description: i18n.t("The duration of a Jewels session on Expert mode (in seconds)."),
+              type: "number",
+              minimum: 1,
+              maximum: 300,
+              default: 15,
+              "ui:grid": {
+                xs: 3,
+              },
+            },
+            diamond_count: {
+              title: i18n.t("Initial Diamond Count"),
+              description: i18n.t("The number of diamonds in Jewels game."),
+              type: "number",
+              minimum: 3,
+              maximum: 25,
+              default: 15,
+              "ui:grid": {
+                xs: 3,
+              },
+            },
+            shape_count: {
+              title: i18n.t("Initial Shape Count"),
+              description: i18n.t("The number of shapes in Jewels game"),
+              type: "number",
+              minimum: 1,
+              maximum: 3,
+              default: 1,
+              "ui:grid": {
+                xs: 3,
+              },
+            },
+            bonus_point_count: {
+              title: i18n.t("Bonus points for next level"),
+              description: "",
+              type: "number",
+              minimum: 0,
+              maximum: 500,
+              default: 50,
+              "ui:grid": {
+                xs: 6,
+              },
+            },
+            x_changes_in_level_count: {
+              title: i18n.t("X changes in level count"),
+              description: "",
+              type: "number",
+              minimum: 0,
+              maximum: 25,
+              default: 1,
+              "ui:grid": {
+                xs: 3,
+              },
+            },
+            x_diamond_count: {
+              title: i18n.t("X diamond count"),
+              description: "",
+              type: "number",
+              minimum: 0,
+              maximum: 25,
+              default: 4,
+              "ui:grid": {
+                xs: 3,
+              },
+            },
+          },
+        },
+      },
+    },
+    "lamp.jewels_b": {
+      type: "object",
+      properties: {
+        settings: {
+          title: i18n.t("Activity Settings"),
+          type: "object",
+          required: [
+            "mode",
+            "variant",
+            "beginner_seconds",
+            "intermediate_seconds",
+            "advanced_seconds",
+            "expert_seconds",
+            "diamond_count",
+            "shape_count",
+            "bonus_point_count",
+          ],
+          dependencies: {
+            variant: {
+              oneOf: [
+                {
+                  properties: {
+                    variant: {
+                      const: "trails_a",
+                    },
+                  },
+                },
+                {
+                  properties: {
+                    variant: {
+                      const: "trails_b",
+                    },
+                    y_changes_in_level_count: {
+                      title: i18n.t("Y changes in level count"),
+                      description: "",
+                      type: "number",
+                      minimum: 0,
+                      maximum: 25,
+                      default: 2,
+                      "ui:grid": {
+                        xs: 3,
+                      },
+                    },
+                    y_shape_count: {
+                      title: i18n.t("Y shape count"),
+                      description: "",
+                      type: "number",
+                      minimum: 0,
+                      maximum: 4,
+                      default: 1,
+                      "ui:grid": {
+                        xs: 3,
+                      },
+                    },
+                  },
+                },
+              ],
+            },
+          },
+          properties: {
+            mode: {
+              title: i18n.t("Mode"),
+              description: i18n.t("The mode of the jewels game."),
+              type: "number",
+              enum: [1, 2, 3, 4],
+              enumNames: [i18n.t("Beginner"), i18n.t("Intermediate"), i18n.t("Advanced"), i18n.t("Expert")],
+              default: 1,
+              "ui:grid": {
+                xs: 6,
+              },
+            },
+            variant: {
+              title: i18n.t("Variant"),
+              description: i18n.t("The variant of the Jewels game (A or B)."),
+              type: "string",
+              enum: ["trails_a", "trails_b"],
+              enumNames: [i18n.t("Trails A"), i18n.t("Trails B")],
+              default: "trails_b",
+              "ui:grid": {
+                xs: 6,
+              },
+            },
+            beginner_seconds: {
+              title: i18n.t("Beginner Duration"),
+              description: i18n.t("The duration of a Jewels session on Beginner mode (in seconds)."),
+              type: "number",
+              minimum: 1,
+              maximum: 300,
+              default: 90,
+              "ui:grid": {
+                xs: 3,
+              },
+            },
+            intermediate_seconds: {
+              title: i18n.t("Intermediate Duration"),
+              description: i18n.t("The duration of a Jewels session on Intermediate mode (in seconds)."),
+              type: "number",
+              minimum: 1,
+              maximum: 300,
+              default: 30,
+              "ui:grid": {
+                xs: 3,
+              },
+            },
+            advanced_seconds: {
+              title: i18n.t("Advanced Duration"),
+              description: i18n.t("The duration of a Jewels session on Advanced mode (in seconds)."),
+              type: "number",
+              minimum: 1,
+              maximum: 300,
+              default: 25,
+              "ui:grid": {
+                xs: 3,
+              },
+            },
+            expert_seconds: {
+              title: i18n.t("Expert Duration"),
+              description: i18n.t("The duration of a Jewels session on Expert mode (in seconds)."),
+              type: "number",
+              minimum: 1,
+              maximum: 300,
+              default: 15,
+              "ui:grid": {
+                xs: 3,
+              },
+            },
+            diamond_count: {
+              title: i18n.t("Initial Diamond Count"),
+              description: i18n.t("The number diamonds in Jewels game"),
+              type: "number",
+              minimum: 3,
+              maximum: 25,
+              default: 15,
+              "ui:grid": {
+                xs: 3,
+              },
+            },
+            shape_count: {
+              title: i18n.t("Initial Shape Count"),
+              description: i18n.t("The number of shapes in Jewels game"),
+              type: "number",
+              minimum: 1,
+              maximum: 3,
+              default: 1,
+              "ui:grid": {
+                xs: 3,
+              },
+            },
+            bonus_point_count: {
+              title: i18n.t("Bonus points for next level"),
+              description: "",
+              type: "number",
+              minimum: 0,
+              maximum: 500,
+              default: 50,
+              "ui:grid": {
+                xs: 6,
+              },
+            },
+            x_changes_in_level_count: {
+              title: i18n.t("X changes in level count"),
+              description: "",
+              type: "number",
+              minimum: 0,
+              maximum: 25,
+              default: 1,
+              "ui:grid": {
+                xs: 3,
+              },
+            },
+            x_diamond_count: {
+              title: i18n.t("X diamond count"),
+              description: "",
+              type: "number",
+              minimum: 0,
+              maximum: 25,
+              default: 4,
+              "ui:grid": {
+                xs: 3,
+              },
+            },
+          },
+        },
+      },
+    },
+
+    "lamp.survey": {
+      type: "object",
+      properties: {
+        settings: {
+          title: i18n.t("Survey Questions"),
+          description: i18n.t("Configure questions, parameters, and options."),
+          type: "array",
+          "ui:schema": {
+            copyable: true,
+          },
+          "ui:options": {
+            addable: true,
+            removable: true,
+            orderable: true,
+            copyable: true,
+          },
+          items: {
+            required: ["text", "type"],
+            type: "object",
+            dependencies: {
+              type: {
+                oneOf: [
+                  {
+                    properties: {
+                      type: {
+                        enum: ["text", "short", "matrix"],
+                      },
+                      // ...geFeedBackSettings(),
+                    },
+                  },
+                  {
+                    type: "object",
+                    properties: {
+                      type: {
+                        // type: "string",
+                        enum: ["likert", "boolean", "list", "multiselect"],
+                        // default: "list"
+                      },
+                    },
+                    required: ["type", "options"],
+                    allOf: [
+                      // Likert type
+                      {
+                        if: {
+                          properties: { type: { const: "likert" } },
+                        },
+                        then: {
+                          required: ["options"],
+
+                          properties: {
+                            options: {
+                              type: "array",
+                              title: i18n.t("Response Options"),
+                              minItems: 4,
+                              maxItems: 4,
+                              default: [
+                                { value: "3", description: "Nearly All the Time", contigencySettings: {} },
+                                { value: "2", description: "More than Half the Time", contigencySettings: {} },
+                                { value: "1", description: "Several Times", contigencySettings: {} },
+                                { value: "0", description: "Not at all", contigencySettings: {} },
+                              ],
+                              items: {
+                                type: "object",
+                                properties: {
+                                  value: {
+                                    title: "Value",
+                                    readOnly: true,
+                                    type: "string",
+                                    enum: ["3", "2", "1", "0"],
+                                    enumNames: [
+                                      i18n.t("Nearly All the Time"),
+                                      i18n.t("More than Half the Time"),
+                                      i18n.t("Several Times"),
+                                      i18n.t("Not at all"),
+                                    ],
+                                  },
+                                  description: {
+                                    readOnly: true,
+                                    title: i18n.t("Option Description"),
+                                    type: "string",
+                                    "ui:widget": "textarea",
+                                    "ui:options": {
+                                      rows: 3,
+                                    },
+                                  },
+                                  ...geFeedBackSettings(),
+                                  ...geProConsSettings(),
+                                  ...getContingencySettings(),
+                                },
+                                required: ["value"],
+                              },
+                            },
+                          },
+                        },
+                      },
+
+                      // Boolean type
+                      {
+                        if: {
+                          properties: { type: { const: "boolean" } },
+                        },
+                        then: {
+                          properties: {
+                            options: {
+                              type: "array",
+                              title: i18n.t("Response Options"),
+                              minItems: 2,
+                              maxItems: 2,
+                              default: [
+                                { value: "Yes", description: "Yes", contigencySettings: {} },
+                                { value: "No", description: "No", contigencySettings: {} },
+                              ],
+                              items: {
+                                type: "object",
+                                properties: {
+                                  value: {
+                                    readOnly: true,
+                                    title: i18n.t("Option Text"),
+                                    type: "string",
+                                    enum: ["Yes", "No"],
+                                    enumNames: [i18n.t("Yes"), i18n.t("No")],
+                                  },
+                                  description: {
+                                    readOnly: true,
+                                    title: i18n.t("Option Description"),
+                                    type: "string",
+                                    "ui:widget": "textarea",
+                                    "ui:options": {
+                                      rows: 3,
+                                    },
+                                  },
+                                  ...geFeedBackSettings(),
+                                  ...geProConsSettings(),
+                                  ...getContingencySettings(),
+                                },
+                                required: ["value", "description"],
+                              },
+                            },
+                          },
+                          required: ["options"],
+                        },
+                      },
+                      {
+                        if: {
+                          properties: {
+                            type: {
+                              enum: ["list", "multiselect"],
+                            },
+                          },
+                        },
+                        then: {
+                          properties: {
+                            options: {
+                              type: "array",
+                              title: i18n.t("Response Options"),
+                              minItems: 1,
+                              items: {
+                                type: "object",
+                                properties: {
+                                  value: {
+                                    title: i18n.t("Option Text"),
+                                    type: "string",
+                                    minLength: 1,
+                                    default: "",
+                                  },
+                                  description: {
+                                    title: i18n.t("Option Description"),
+                                    type: "string",
+                                    default: "",
+                                    "ui:widget": "textarea",
+                                    "ui:options": {
+                                      rows: 3,
+                                    },
+                                  },
+                                  ...geFeedBackSettings(),
+                                  ...geProConsSettings(),
+                                  ...getContingencySettings(),
+                                },
+                                required: ["value"],
+                              },
+                            },
+                          },
+                          required: ["options"],
+                        },
+                      },
+                    ],
+                  },
+                  {
+                    properties: {
+                      type: {
+                        enum: ["time"],
+                      },
+                      options: {
+                        type: "array",
+                        title: i18n.t("Response Options"),
+                        minItems: 1,
+                        maxItems: 1,
+                        items: {
+                          type: "object",
+                          properties: {
+                            value: {
+                              title: i18n.t("Time pattern"),
+                              type: "string",
+                              enum: ["standard", "military"],
+                              enumNames: [i18n.t("STANDARD TIME"), i18n.t("MILITARY TIME")],
+                              default: "standard",
+                            },
+                            // ...geFeedBackSettings(),
+                          },
+                        },
+                      },
+                    },
+                  },
+                  {
+                    properties: {
+                      type: {
+                        enum: ["slider", "rating"],
+                      },
+                      options: {
+                        type: "array",
+                        title: i18n.t("Response Options"),
+                        minItems: 1,
+                        items: {
+                          type: "object",
+                          properties: {
+                            value: {
+                              title: i18n.t("Option Text (Numerical)"),
+                              type: "number",
+                              default: 0,
+                            },
+                            description: {
+                              title: i18n.t("Option Description"),
+                              type: "string",
+                              default: "",
+                            },
+                            ...geFeedBackSettings(),
+                            ...geProConsSettings(),
+                            ...getContingencySettings(),
+                          },
+                        },
+                      },
+                    },
+                    required: ["options"],
+                  },
+                ],
+              },
+            },
+
+            properties: {
+              text: {
+                type: "string",
+                title: i18n.t("Question Text"),
+                minLength: 1,
+                maxLength: 500,
+                default: "",
+              },
+              image: {
+                title: i18n.t("Tips Image"),
+                description: i18n.t(
+                  "Images should be in the format .jpeg/.png/.gif/.svg and the size should not exceed 4 MB."
+                ),
+                type: "string",
+                format: "data-url",
+                "ui:widget": "file",
+                "ui:options": {
+                  accept: ".gif,.jpg,.png,.svg",
+                },
+              },
+              required: {
+                title: i18n.t("Required"),
+                type: "boolean",
+                default: true,
+              },
+              description: {
+                type: "string",
+                title: i18n.t("Question Description"),
+                default: "",
+                maxLength: 500,
+              },
+              type: {
+                type: "string",
+                title: i18n.t("Question Type"),
+                enum: [
+                  "text",
+                  "boolean",
+                  "list",
+                  "multiselect",
+                  "slider",
+                  "short",
+                  "rating",
+                  "time",
+                  "likert",
+                  "matrix",
+                ],
+                enumNames: [
+                  i18n.t("Text"),
+                  i18n.t("Boolean"),
+                  i18n.t("List"),
+                  i18n.t("Multi-Select"),
+                  i18n.t("Slider"),
+                  i18n.t("Short Answer"),
+                  i18n.t("Rating"),
+                  i18n.t("Time"),
+                  i18n.t("Likert"),
+                  i18n.t("Matrix"),
+                ],
+                default: "text",
+              },
+              warnings: {
+                type: "array",
+                title: i18n.t("Warnings"),
+                description: i18n.t(
+                  "Set warnings that will be shown in a dialog to participants when the corresponding answers are submitted."
+                ),
+                items: {
+                  type: "object",
+                  properties: {
+                    answer: {
+                      title: i18n.t("Answer"),
+                      description: i18n.t("The answer for which the warning will be shown."),
+                      type: "string",
+                    },
+                    warningText: {
+                      title: i18n.t("Warning Text"),
+                      description: i18n.t("The message that will be shown to participants."),
+                      type: "string",
+                    },
+                  },
+                  required: ["answer", "warningText"],
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    "lamp.emotion_recognition": {
+      type: "object",
+      properties: {
+        settings: {
+          title: i18n.t("Activity settings"),
+          type: "array",
+          description: i18n.t("A maximum of 50 images can only be uploaded."),
+          items: {
+            required: ["image", "emotion", "emotionText"],
+            type: "object",
+            properties: {
+              image: {
+                type: "string",
+                title: i18n.t("Image"),
+                description: i18n.t(
+                  "Images should be in the format .jpeg/.png/.gif/.svg and the size should not exceed 4 MB."
+                ),
+                format: "data-url",
+                "ui:widget": "file",
+                "ui:options": {
+                  accept: ".gif,.jpg,.png,.svg",
+                  maxSize: 4000,
+                },
+              },
+              emotionText: {
+                title: i18n.t("Text"),
+                type: "string",
+                default: "",
+              },
+              emotion: {
+                type: "string",
+                "ui:widget": AutoSuggest,
+                title: i18n.t("Emotion"),
+              },
+            },
+          },
+        },
+      },
+    },
+    "lamp.voice_survey": {
+      type: "object",
+      properties: {
+        settings: {
+          title: i18n.t("Activity settings"),
+          type: "array",
+          items: {
+            required: ["question"],
+            type: "object",
+            properties: {
+              question: {
+                title: i18n.t("Question"),
+                type: "string",
+                default: "",
+              },
+            },
+          },
+        },
+      },
+    },
+    "lamp.dbt_diary_card": {
+      type: "object",
+      properties: {
+        settings: {
+          title: i18n.t("Activity Settings"),
+          type: "object",
+          required: ["livingGoal", "targetEffective", "targetIneffective", "emotions"],
+          properties: {
+            livingGoal: {
+              title: i18n.t("Life worth living goal"),
+              description: i18n.t("300 max characters."),
+              type: "string",
+              default: "",
+              "ui:widget": "textarea",
+              "ui:options": {
+                rows: 10,
+              },
+            },
+            targetEffective: {
+              title: i18n.t("Effective Target Behaviors"),
+              type: "array",
+              items: {
+                type: "object",
+                required: ["target", "measure"],
+                properties: {
+                  target: {
+                    title: i18n.t("Behavior name"),
+                    type: "string",
+                    minLength: 1,
+                  },
+                  measure: {
+                    title: i18n.t("Measure of Action"),
+                    type: "string",
+                    minLength: 1,
+                    enum: [i18n.t("Times"), i18n.t("Hours"), i18n.t("Minutes"), i18n.t("Amount")],
+                    enumNames: [i18n.t("Times"), i18n.t("Hours"), i18n.t("Minutes"), i18n.t("Amount")],
+                  },
+                },
+              },
+            },
+            targetIneffective: {
+              title: i18n.t("Ineffective Target Behaviors"),
+              description: i18n.t(
+                "Default Ineffective Behaviors: Die, Self-Harm, Quit Therapy, Die by Suicide. Do not add these below."
+              ),
+              type: "array",
+              items: {
+                type: "object",
+                required: ["target", "measure"],
+                properties: {
+                  target: {
+                    title: i18n.t("Behavior name"),
+                    type: "string",
+                    minLength: 1,
+                  },
+                  measure: {
+                    title: i18n.t("Measure of action"),
+                    type: "string",
+                    minLength: 1,
+                    enum: [i18n.t("Times"), i18n.t("Hours"), i18n.t("Minutes"), i18n.t("Amount")],
+                    enumNames: [i18n.t("Times"), i18n.t("Hours"), i18n.t("Minutes"), i18n.t("Amount")],
+                  },
+                },
+              },
+            },
+            emotions: {
+              title: i18n.t("Emotions"),
+              description: i18n.t("Default Emotions: Sadness, Shame, Anger, Fear/Worry, Joy. Do not add these below."),
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  emotion: {
+                    title: i18n.t("Emotions"),
+                    type: "string",
+                    minLength: 1,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    "lamp.cats_and_dogs": {
+      type: "object",
+      properties: {
+        settings: {
+          title: i18n.t("Activity Settings"),
+          type: "object",
+        },
+      },
+    },
+    "lamp.maze_game": {
+      type: "object",
+      properties: {
+        settings: {
+          title: i18n.t("Activity Settings"),
+          type: "object",
+        },
+      },
+    },
+    "lamp.dcog": {
+      type: "object",
+      properties: {
+        settings: {
+          title: i18n.t("Activity Settings"),
+          type: "object",
+        },
+      },
+    },
+    "lamp.digit_span": {
+      type: "object",
+      properties: {
+        settings: {
+          title: i18n.t("Activity Settings"),
+          type: "object",
+        },
+      },
+    },
+    "lamp.cats_and_dogs_new": {
+      type: "object",
+      properties: {
+        settings: {
+          title: i18n.t("Activity Settings"),
+          type: "object",
+        },
+      },
+    },
+    "lamp.journal": {
+      type: "object",
+      properties: {
+        settings: {
+          title: i18n.t("Activity Settings"),
+          type: "object",
+        },
+      },
+    },
+    "lamp.symbol_digit_substitution": {
+      type: "object",
+      properties: {
+        settings: {
+          title: i18n.t("Activity settings"),
+          required: ["count_of_symbols", "show_mapping", "duration"],
+          type: "object",
+          properties: {
+            count_of_symbols: {
+              title: i18n.t("Number of symbols"),
+              description: i18n.t("Number of symbols in the mapping (min: 4, max: 10)"),
+              type: "number",
+              minimum: 4,
+              maximum: 10,
+              default: 10,
+              "ui:grid": {
+                xs: 6,
+              },
+            },
+            show_mapping: {
+              title: i18n.t("Show Mapping Table"),
+              description: i18n.t("Whether to show mapping table."),
+              enum: ["before", "during", "not_at_all"],
+              default: "during",
+              enumNames: [i18n.t("Before Game"), i18n.t("During Game"), i18n.t("Not at all")],
+              "ui:grid": {
+                xs: 6,
+              },
+            },
+            duration: {
+              title: i18n.t("Duration"),
+              description: i18n.t("Duration of task (in seconds) (min: 20, max: 400)."),
+              type: "number",
+              minimum: 20,
+              maximum: 400,
+              default: 120,
+              "ui:grid": {
+                xs: 6,
+              },
+            },
+          },
+        },
+      },
+    },
+    "lamp.scratch_image": {
+      type: "object",
+      properties: {
+        settings: {
+          title: i18n.t("Activity Settings"),
+          type: "object",
+          required: ["threshold"],
+          properties: {
+            threshold: {
+              title: i18n.t("Threshold"),
+              description: i18n.t("The scratch threshold percentage."),
+              type: "number",
+              minimum: 1,
+              maximum: 100,
+              default: 80,
+            },
+          },
+        },
+      },
+    },
+    "lamp.goals": {
+      type: "object",
+      properties: {
+        settings: {
+          title: i18n.t("Activity Settings"),
+          type: "object",
+          required: ["unit", "value"],
+          properties: {
+            unit: {
+              title: i18n.t("Unit"),
+              description: "",
+              type: "string",
+              default: "",
+            },
+            value: {
+              title: i18n.t("Value"),
+              description: "",
+              type: "number",
+            },
+          },
+        },
+      },
+    },
+    "lamp.medications": {
+      type: "object",
+      properties: {
+        settings: {
+          title: i18n.t("Activity Settings"),
+          type: "object",
+          required: ["unit", "value"],
+          properties: {
+            unit: {
+              title: i18n.t("Unit"),
+              description: "",
+              type: "string",
+              default: "",
+            },
+            value: {
+              title: i18n.t("Value"),
+              description: "",
+              type: "number",
+            },
+          },
+        },
+      },
+    },
+    "lamp.tips": {
+      type: "object",
+      properties: {
+        settings: {
+          title: i18n.t("Tip Details"),
+          type: "array",
+          items: {
+            type: "object",
+            required: ["title", "text"],
+            minItems: 1,
+            properties: {
+              title: {
+                title: i18n.t("Tips Title"),
+                type: "string",
+                minLength: 1,
+              },
+              text: {
+                title: i18n.t("Tips Description"),
+                type: "string",
+                minLength: 1,
+                "ui:widget": "textarea",
+                "ui:options": {
+                  rows: 5,
+                },
+              },
+              image: {
+                title: i18n.t("Tips Image"),
+                description: i18n.t(
+                  "Images should be in the format .jpeg/.png/.gif/.svg and the size should not exceed 4 MB."
+                ),
+                type: "string",
+                format: "data-url",
+                "ui:widget": "file",
+                "ui:options": {
+                  accept: ".gif,.jpg,.png,.svg",
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    "lamp.zoom_meeting": {
+      type: "object",
+      properties: {
+        settings: {
+          title: i18n.t("Details"),
+          type: "object",
+          required: ["zoom_link"],
+          properties: {
+            zoom_link: {
+              title: i18n.t("Meeting Link"),
+              type: "string",
+              "ui:widget": "textarea",
+              "ui:options": {
+                rows: 5,
+              },
+            },
+          },
+        },
+      },
+    },
+    "lamp.breathe": {
+      type: "object",
+      properties: {
+        settings: {
+          title: i18n.t("Activity Settings"),
+          type: "object",
+          properties: {
+            audio_url: {
+              title: i18n.t("Remote Audio URL"),
+              description: i18n.t("Do not provide an audio URL AND upload audio below."),
+              type: "string",
+              format: "url",
+            },
+            audio: {
+              title: i18n.t(""),
+              description: i18n.t("Do not upload audio AND provide an audio URL above."),
+              type: "string",
+              format: "data-url",
+              "ui:options": {
+                accept: [".mp3", ".ogg", ".wav"],
+              },
+            },
+          },
+        },
+      },
+    },
+    "lamp.gyroscope": {
+      type: "object",
+      properties: {
+        settings: {
+          title: i18n.t("Activity Settings"),
+          required: ["level"],
+          type: "object",
+          properties: {
+            level: {
+              title: i18n.t("Game Level"),
+              description: i18n.t(
+                '"Easy" - 10 rotation trials, "Medium" - 20 trials with rotations +15, -15, +30, -30, "Hard" - 30 trails with rotation +15, -15, +30, -30, +45, -45 degrees'
+              ),
+              type: "string",
+              minLength: 1,
+              enum: ["Easy", "Medium", "Hard"],
+              enumNames: [i18n.t("Easy"), i18n.t("Medium"), i18n.t("Hard")],
+              default: "Easy",
+            },
+          },
+        },
+      },
+    },
+    "lamp.wcst": {
+      type: "object",
+      properties: {
+        settings: {
+          title: i18n.t("Activity Settings"),
+          type: "object",
+          required: ["deck_size", "time_limit_per_trial_s"],
+          properties: {
+            deck_size: {
+              title: i18n.t("Deck Size"),
+              description: i18n.t("Number of cards in the deck"),
+              type: "number",
+              enum: [64, 128],
+              enumNames: [i18n.t("64 cards (WCST-64)"), i18n.t("128 cards (standard)")],
+              default: 64,
+              "ui:grid": { xs: 6 },
+            },
+            time_limit_per_trial_s: {
+              title: i18n.t("Time Limit per Trial (seconds, 0 = untimed)"),
+              description: i18n.t("Maximum time allowed for each card sort (0 for no limit)"),
+              type: "number",
+              minimum: 0,
+              maximum: 120,
+              default: 0,
+              "ui:grid": { xs: 6 },
+            },
+          },
+        },
+      },
+    },
+    "lamp.mental_rotation": {
+      type: "object",
+      properties: {
+        settings: {
+          title: i18n.t("Activity Settings"),
+          type: "object",
+          required: ["difficulty", "time_limit_per_trial_s"],
+          properties: {
+            difficulty: {
+              title: i18n.t("Difficulty"),
+              description: i18n.t("Controls shape complexity and rotation angles"),
+              type: "string",
+              enum: ["easy", "medium", "hard"],
+              enumNames: [
+                i18n.t("Easy (5 blocks, cardinal rotations, 16 trials)"),
+                i18n.t("Medium (6 blocks, 45° steps, 16 trials)"),
+                i18n.t("Hard (7 blocks, 45° steps, 32 trials)"),
+              ],
+              default: "medium",
+              "ui:grid": { xs: 6 },
+            },
+            time_limit_per_trial_s: {
+              title: i18n.t("Time Limit per Trial (seconds)"),
+              description: i18n.t("Maximum time allowed for each trial"),
+              type: "number",
+              minimum: 5,
+              maximum: 60,
+              default: 15,
+              "ui:grid": { xs: 6 },
+            },
+          },
+        },
+      },
+    },
+    "lamp.memory_match": {
+      type: "object",
+      properties: {
+        settings: {
+          title: i18n.t("Activity Settings"),
+          type: "object",
+          required: ["difficulty", "max_rounds", "time_limit_per_round_s"],
+          properties: {
+            difficulty: {
+              title: i18n.t("Difficulty"),
+              description: i18n.t("Controls the grid size and number of pairs"),
+              type: "string",
+              enum: ["easy", "medium", "hard"],
+              enumNames: [
+                i18n.t("Easy (3×4, 6 pairs)"),
+                i18n.t("Medium (4×5, 10 pairs)"),
+                i18n.t("Hard (5×6, 15 pairs)"),
+              ],
+              default: "medium",
+              "ui:grid": { xs: 4 },
+            },
+            max_rounds: {
+              title: i18n.t("Number of Rounds"),
+              description: i18n.t("How many rounds to present"),
+              type: "number",
+              minimum: 1,
+              maximum: 20,
+              default: 4,
+              "ui:grid": { xs: 4 },
+            },
+            time_limit_per_round_s: {
+              title: i18n.t("Time Limit per Round (seconds)"),
+              description: i18n.t("Maximum time allowed for each round"),
+              type: "number",
+              minimum: 10,
+              maximum: 600,
+              default: 120,
+              "ui:grid": { xs: 4 },
+            },
+          },
+        },
+      },
+    },
+    "lamp.sliding_puzzle": {
+      type: "object",
+      properties: {
+        settings: {
+          title: i18n.t("Activity Settings"),
+          type: "object",
+          required: ["difficulty", "time_limit_per_puzzle_s"],
+          properties: {
+            difficulty: {
+              title: i18n.t("Difficulty"),
+              description: i18n.t("Controls grid size and number of puzzles"),
+              type: "string",
+              enum: ["easy", "medium", "hard"],
+              enumNames: [
+                i18n.t("Easy (3×3, 5 puzzles)"),
+                i18n.t("Medium (4×4, 3 puzzles)"),
+                i18n.t("Hard (5×5, 3 puzzles)"),
+              ],
+              default: "medium",
+              "ui:grid": { xs: 6 },
+            },
+            time_limit_per_puzzle_s: {
+              title: i18n.t("Time Limit per Puzzle (seconds, 0 = untimed)"),
+              description: i18n.t("Maximum time allowed for each puzzle (0 for no limit)"),
+              type: "number",
+              minimum: 0,
+              maximum: 600,
+              default: 0,
+              "ui:grid": { xs: 6 },
+            },
+          },
+        },
+      },
+    },
+    "lamp.letter_logic": {
+      type: "object",
+      properties: {
+        settings: {
+          title: i18n.t("Activity Settings"),
+          type: "object",
+          required: ["difficulty"],
+          properties: {
+            difficulty: {
+              title: i18n.t("Difficulty"),
+              description: i18n.t("Controls number of rounds and guess budget"),
+              type: "string",
+              enum: ["easy", "medium", "hard"],
+              enumNames: [
+                i18n.t("Easy (3 rounds, 8 guesses)"),
+                i18n.t("Medium (5 rounds, 6 guesses)"),
+                i18n.t("Hard (7 rounds, 5 guesses)"),
+              ],
+              default: "medium",
+            },
+          },
+        },
+      },
+    },
+    "lamp.nonogram": {
+      type: "object",
+      properties: {
+        settings: {
+          title: i18n.t("Activity Settings"),
+          type: "object",
+          required: ["difficulty", "max_puzzles", "time_limit_per_puzzle_s"],
+          properties: {
+            difficulty: {
+              title: i18n.t("Difficulty"),
+              description: i18n.t("Controls the grid size"),
+              type: "string",
+              enum: ["easy", "medium", "hard"],
+              enumNames: [i18n.t("Easy (5×5)"), i18n.t("Medium (7×7)"), i18n.t("Hard (10×10)")],
+              default: "medium",
+              "ui:grid": { xs: 4 },
+            },
+            max_puzzles: {
+              title: i18n.t("Number of Puzzles"),
+              description: i18n.t("How many puzzles to present"),
+              type: "number",
+              minimum: 1,
+              maximum: 20,
+              default: 6,
+              "ui:grid": { xs: 4 },
+            },
+            time_limit_per_puzzle_s: {
+              title: i18n.t("Time Limit per Puzzle (seconds)"),
+              description: i18n.t("Maximum time allowed for each puzzle"),
+              type: "number",
+              minimum: 10,
+              maximum: 600,
+              default: 120,
+              "ui:grid": { xs: 4 },
+            },
+          },
+        },
+      },
+    },
+    "lamp.lexical_decision": {
+      type: "object",
+      properties: {
+        settings: {
+          title: i18n.t("Activity Settings"),
+          type: "object",
+          required: ["difficulty", "fixation_ms", "time_limit_per_trial_s"],
+          properties: {
+            difficulty: {
+              title: i18n.t("Difficulty"),
+              description: i18n.t("Controls trial count and word frequency mix"),
+              type: "string",
+              enum: ["easy", "medium", "hard"],
+              enumNames: [
+                i18n.t("Easy (40 trials, 75% high-freq)"),
+                i18n.t("Medium (60 trials, 50/50)"),
+                i18n.t("Hard (80 trials, 25% high-freq + 2s stimulus limit)"),
+              ],
+              default: "medium",
+              "ui:grid": { xs: 4 },
+            },
+            fixation_ms: {
+              title: i18n.t("Fixation Duration (ms)"),
+              description: i18n.t("Duration of the fixation cross before each stimulus"),
+              type: "number",
+              minimum: 200,
+              maximum: 2000,
+              default: 500,
+              "ui:grid": { xs: 4 },
+            },
+            time_limit_per_trial_s: {
+              title: i18n.t("Time Limit per Trial (seconds)"),
+              description: i18n.t("Maximum time allowed for each response"),
+              type: "number",
+              minimum: 1,
+              maximum: 30,
+              default: 5,
+              "ui:grid": { xs: 4 },
+            },
+          },
+        },
+      },
+    },
+    "lamp.stroop": {
+      type: "object",
+      properties: {
+        settings: {
+          title: i18n.t("Activity Settings"),
+          type: "object",
+          required: ["trials_per_condition", "conditions", "fixation_ms", "feedback_ms"],
+          properties: {
+            trials_per_condition: {
+              title: i18n.t("Trials per Condition"),
+              type: "number",
+              minimum: 1,
+              maximum: 50,
+              default: 20,
+              "ui:grid": { xs: 6 },
+            },
+            conditions: {
+              title: i18n.t("Conditions"),
+              type: "array",
+              items: {
+                type: "string",
+                enum: ["congruent", "incongruent", "neutral"],
+              },
+              uniqueItems: true,
+              default: ["congruent", "incongruent", "neutral"],
+              "ui:widget": "checkboxes",
+              "ui:grid": { xs: 6 },
+            },
+            fixation_ms: {
+              title: i18n.t("Fixation Duration (ms)"),
+              type: "number",
+              minimum: 200,
+              maximum: 2000,
+              default: 500,
+              "ui:grid": { xs: 6 },
+            },
+            feedback_ms: {
+              title: i18n.t("Feedback Duration (ms)"),
+              type: "number",
+              minimum: 200,
+              maximum: 2000,
+              default: 500,
+              "ui:grid": { xs: 6 },
+            },
+          },
+        },
+      },
+    },
+    "lamp.flanker": {
+      type: "object",
+      properties: {
+        settings: {
+          title: i18n.t("Activity Settings"),
+          type: "object",
+          required: ["trials_per_condition", "conditions", "fixation_ms", "stimulus_duration_ms", "feedback_ms"],
+          properties: {
+            trials_per_condition: {
+              title: i18n.t("Trials per Condition"),
+              type: "number",
+              minimum: 1,
+              maximum: 50,
+              default: 20,
+              "ui:grid": { xs: 6 },
+            },
+            conditions: {
+              title: i18n.t("Conditions"),
+              type: "array",
+              items: {
+                type: "string",
+                enum: ["congruent", "incongruent", "neutral"],
+              },
+              uniqueItems: true,
+              default: ["congruent", "incongruent", "neutral"],
+              "ui:widget": "checkboxes",
+              "ui:grid": { xs: 6 },
+            },
+            fixation_ms: {
+              title: i18n.t("Fixation Duration (ms)"),
+              type: "number",
+              minimum: 200,
+              maximum: 2000,
+              default: 500,
+              "ui:grid": { xs: 4 },
+            },
+            stimulus_duration_ms: {
+              title: i18n.t("Stimulus Duration (ms)"),
+              type: "number",
+              minimum: 500,
+              maximum: 5000,
+              default: 1500,
+              "ui:grid": { xs: 4 },
+            },
+            feedback_ms: {
+              title: i18n.t("Feedback Duration (ms)"),
+              type: "number",
+              minimum: 200,
+              maximum: 2000,
+              default: 500,
+              "ui:grid": { xs: 4 },
+            },
+          },
+        },
+      },
+    },
+    "lamp.nback": {
+      type: "object",
+      properties: {
+        settings: {
+          title: i18n.t("Activity Settings"),
+          type: "object",
+          required: ["levels", "trials_per_level", "stimulus_duration_ms", "isi_ms", "target_proportion"],
+          properties: {
+            levels: {
+              title: i18n.t("Chained Levels"),
+              description: i18n.t("Which N-back levels to run, in order"),
+              type: "array",
+              items: { type: "number" },
+              enum: [[1], [2], [3], [1, 2], [1, 2, 3], [2, 3], [1, 3]],
+              enumNames: [
+                i18n.t("1-Back only"),
+                i18n.t("2-Back only"),
+                i18n.t("3-Back only"),
+                i18n.t("1-Back → 2-Back (default)"),
+                i18n.t("1-Back → 2-Back → 3-Back"),
+                i18n.t("2-Back → 3-Back"),
+                i18n.t("1-Back → 3-Back"),
+              ],
+              default: [1, 2],
+              "ui:grid": { xs: 6 },
+            },
+            trials_per_level: {
+              title: i18n.t("Trials per Level"),
+              type: "number",
+              minimum: 10,
+              maximum: 100,
+              default: 20,
+              "ui:grid": { xs: 6 },
+            },
+            stimulus_duration_ms: {
+              title: i18n.t("Stimulus Duration (ms)"),
+              type: "number",
+              minimum: 200,
+              maximum: 2000,
+              default: 1500,
+              "ui:grid": { xs: 4 },
+            },
+            isi_ms: {
+              title: i18n.t("Inter-Stimulus Interval (ms)"),
+              type: "number",
+              minimum: 500,
+              maximum: 5000,
+              default: 2000,
+              "ui:grid": { xs: 4 },
+            },
+            target_proportion: {
+              title: i18n.t("Target Proportion"),
+              type: "number",
+              minimum: 0.1,
+              maximum: 0.5,
+              default: 0.3,
+              multipleOf: 0.05,
+              "ui:grid": { xs: 4 },
+            },
+          },
+        },
+      },
+    },
+    "lamp.water_sort": {
+      type: "object",
+      properties: {
+        settings: {
+          title: i18n.t("Activity Settings"),
+          type: "object",
+          required: ["difficulty", "max_puzzles", "time_limit_per_puzzle_s"],
+          properties: {
+            difficulty: {
+              title: i18n.t("Difficulty"),
+              description: i18n.t("Controls the number of colors and complexity"),
+              type: "string",
+              enum: ["easy", "medium", "hard"],
+              enumNames: [i18n.t("Easy (3 colors)"), i18n.t("Medium (4 colors)"), i18n.t("Hard (5 colors)")],
+              default: "medium",
+              "ui:grid": { xs: 4 },
+            },
+            max_puzzles: {
+              title: i18n.t("Number of Puzzles"),
+              description: i18n.t("How many puzzles to present (sorted by difficulty)"),
+              type: "number",
+              minimum: 1,
+              maximum: 20,
+              default: 8,
+              "ui:grid": { xs: 4 },
+            },
+            time_limit_per_puzzle_s: {
+              title: i18n.t("Time Limit per Puzzle (seconds)"),
+              description: i18n.t("Maximum time allowed for each puzzle"),
+              type: "number",
+              minimum: 10,
+              maximum: 300,
+              default: 90,
+              "ui:grid": { xs: 4 },
+            },
+          },
+        },
+      },
+    },
+    "lamp.delay_discounting": {
+      type: "object",
+      properties: {
+        settings: {
+          title: i18n.t("Activity Settings"),
+          type: "object",
+          required: ["delayed_amount", "delays", "trials_per_delay"],
+          properties: {
+            delayed_amount: {
+              title: i18n.t("Delayed Amount ($)"),
+              description: i18n.t("The larger, delayed reward amount"),
+              type: "number",
+              minimum: 1,
+              maximum: 10000,
+              default: 100,
+              "ui:grid": { xs: 6 },
+            },
+            delays: {
+              title: i18n.t("Delay Windows"),
+              description: i18n.t("Which delay periods to include (check all that apply)"),
+              type: "array",
+              items: {
+                type: "number",
+                enum: [1, 7, 30, 90, 365],
+                enumNames: [
+                  i18n.t("1 day"),
+                  i18n.t("1 week"),
+                  i18n.t("1 month"),
+                  i18n.t("3 months"),
+                  i18n.t("1 year"),
+                ],
+              },
+              uniqueItems: true,
+              default: [1, 7, 30, 90, 365],
+              "ui:widget": "checkboxes",
+              "ui:grid": { xs: 12 },
+            },
+            trials_per_delay: {
+              title: i18n.t("Trials per Delay"),
+              description: i18n.t("Number of bisection trials per delay period"),
+              type: "number",
+              minimum: 1,
+              maximum: 20,
+              default: 6,
+              "ui:grid": { xs: 6 },
+            },
+          },
+        },
+      },
+    },
+    "lamp.tower_of_london": {
+      type: "object",
+      properties: {
+        settings: {
+          title: i18n.t("Activity Settings"),
+          type: "object",
+          required: ["difficulty", "max_problems", "time_limit_per_problem_s"],
+          properties: {
+            difficulty: {
+              title: i18n.t("Difficulty"),
+              description: i18n.t("Controls the range of minimum-move problems presented"),
+              type: "string",
+              enum: ["easy", "medium", "hard"],
+              enumNames: [
+                i18n.t("Easy (1–3 moves)"),
+                i18n.t("Medium (2–5 moves)"),
+                i18n.t("Hard (4–7 moves)"),
+              ],
+              default: "medium",
+              "ui:grid": { xs: 4 },
+            },
+            max_problems: {
+              title: i18n.t("Number of Problems"),
+              description: i18n.t("How many problems to present (sorted by difficulty)"),
+              type: "number",
+              minimum: 1,
+              maximum: 20,
+              default: 12,
+              "ui:grid": { xs: 4 },
+            },
+            time_limit_per_problem_s: {
+              title: i18n.t("Time Limit per Problem (seconds)"),
+              description: i18n.t("Maximum time allowed for each problem"),
+              type: "number",
+              minimum: 10,
+              maximum: 300,
+              default: 60,
+              "ui:grid": { xs: 4 },
+            },
+          },
+        },
+      },
+    },
+    "lamp.simple_rt": {
+      type: "object",
+      properties: {
+        settings: {
+          title: i18n.t("Activity Settings"),
+          type: "object",
+          required: ["simple_trials", "choice_trials", "min_isi_ms", "max_isi_ms"],
+          properties: {
+            simple_trials: {
+              title: i18n.t("Simple RT Trials"),
+              description: i18n.t("Number of simple reaction time trials"),
+              type: "number",
+              minimum: 1,
+              maximum: 100,
+              default: 20,
+              "ui:grid": { xs: 6 },
+            },
+            choice_trials: {
+              title: i18n.t("Choice RT Trials"),
+              description: i18n.t("Number of choice reaction time trials (0 to skip)"),
+              type: "number",
+              minimum: 0,
+              maximum: 100,
+              default: 20,
+              "ui:grid": { xs: 6 },
+            },
+            min_isi_ms: {
+              title: i18n.t("Min Inter-stimulus Interval (ms)"),
+              type: "number",
+              minimum: 500,
+              default: 1000,
+              "ui:grid": { xs: 6 },
+            },
+            max_isi_ms: {
+              title: i18n.t("Max Inter-stimulus Interval (ms)"),
+              type: "number",
+              minimum: 1500,
+              default: 4000,
+              "ui:grid": { xs: 6 },
+            },
+          },
+        },
+      },
+    },
+  }
+}
+
+// Splice a raw Activity object with its ActivityDescription object.
+export function spliceActivity({ raw, tag }) {
+  return {
+    id: raw.id,
+    study_id: raw.study_id,
+    category: raw.category,
+    spec: "lamp.survey",
+    name: raw.name,
+    description: tag?.description,
+    photo: tag?.photo,
+    streak: tag?.streak,
+    visualSettings: tag?.visualSettings,
+    branchingSettings: tag?.branchingSettings,
+    showFeed: tag?.showFeed,
+    schedule: raw.schedule,
+    settings: !Array.isArray(raw.settings)
+      ? raw.settings
+      : raw.settings.map((question, idx) => ({
+          text: question.text,
+          type: question.type,
+          required: question.required ?? false,
+          description: tag?.questions?.[idx]?.description,
+          // feedback_text: tag?.questions?.[idx]?.feedback_text ?? "",
+          // pros: tag?.questions?.[idx]?.pros ?? "",
+          // cons: tag?.questions?.[idx]?.cons ?? "",
+          image: tag?.questions?.[idx]?.image,
+          options:
+            question.options === null
+              ? null
+              : question.type !== "matrix" && question.type !== "time"
+              ? question.options?.map((z, idx2) => {
+                  const opt = tag?.questions?.[idx]?.options?.[idx2]
+                  return {
+                    value: z,
+                    feedback_text: opt?.feedback_text ?? "",
+                    pros: opt?.pros ?? "",
+                    cons: opt?.cons ?? "",
+                    // Attachments written before 2026.08.05 store each option as a plain string
+                    description: typeof opt === "string" ? opt : opt?.description,
+                    contigencySettings: opt?.contigencySettings,
+                  }
+                })
+              : question.options,
+
+          warnings: question.warnings,
+        })),
+  }
+}
+// Un-splice an object into its raw Tips Activity object
+export function unspliceTipsActivity(x) {
+  return {
+    raw: {
+      id: x.id,
+      name: x.name,
+      spec: "lamp.tips",
+      icon: x.icon,
+      schedule: x.schedule,
+      settings: x.settings,
+      studyID: x.studyID,
+      category: x.category,
+    },
+  }
+}
+
+// Un-splice an object into its raw Activity object and ActivityDescription object.
+export function unspliceActivity(x) {
+  return {
+    raw: {
+      id: x.id,
+      study_id: x.study_id,
+      category: x.category,
+      spec: "lamp.survey",
+      name: x.name,
+      schedule: x.schedule,
+      settings: (x.settings && Array.isArray(x.settings) ? x.settings : [])?.map((y) => ({
+        text: y?.text,
+        type: y?.type,
+        options:
+          y?.options === null
+            ? null
+            : y?.type !== "matrix" && y?.type !== "time"
+            ? y?.options?.map((z) => z?.value ?? z)
+            : y?.options,
+        required: y?.required ?? false,
+        warnings: y?.warnings,
+      })),
+    },
+    tag: {
+      description: x.description,
+      photo: x.photo,
+      streak: x.streak,
+      showFeed: x.showFeed,
+      branchingSettings: x.branchingSettings,
+      questions: (x.settings && Array.isArray(x.settings) ? x.settings : [])?.map((y) => ({
+        multiselect: y?.type,
+        description: y?.description,
+        // feedback_text: y?.feedback_text ?? "",
+        image: y?.image,
+        options: Array.isArray(y?.options)
+          ? y.options.map((z) => ({
+              description: z?.description ?? "",
+              feedback_text: z?.feedback_text ?? "",
+              pros: z?.pros ?? "",
+              cons: z?.cons ?? "",
+              contigencySettings: ["slider", "list", "multiselect", "rating", "boolean", "likert"].includes(y?.type)
+                ? z?.contigencySettings ?? {}
+                : undefined,
+            }))
+          : [],
+      })),
+    },
+  }
+}
+
+export function unspliceCTActivity(x) {
+  return {
+    raw: {
+      id: x.id,
+      spec: x.spec,
+      name: x.name,
+      schedule: x.schedule,
+      settings: x.settings,
+      category: x.category,
+    },
+    tag: {
+      description: x.description,
+      photo: x.photo,
+      streak: x.streak,
+      visualSettings: x?.visualSettings,
+      showFeed: x.showFeed,
+    },
+  }
+}
+
+export function spliceCTActivity({ raw, tag }) {
+  return {
+    id: raw.id,
+    study_id: raw.study_id,
+    spec: raw.spec,
+    name: raw.name,
+    description: tag?.description,
+    photo: tag?.photo,
+    streak: tag?.streak,
+    visualSettings: tag?.visualSettings,
+    showFeed: tag?.showFeed,
+    schedule: raw.schedule,
+    settings: raw.settings,
+    category: raw.category,
+  }
+}
+
+// Create a new Activity object & survey descriptions if set.
+export async function saveTipActivity(x) {
+  const { raw } = unspliceTipsActivity(x)
+  let result
+  if (!x.id && x.name) {
+    result = (await LAMP.Activity.create(x.studyID, raw)) as any
+    await LAMP.Type.setAttachment(result.data, "me", "lamp.dashboard.activity_details", {
+      description: x.description,
+      photo: x.icon,
+      streak: x.streak,
+      showFeed: x.showFeed,
+    })
+  } else {
+    result = (await LAMP.Activity.update(x.id, {
+      settings: x.settings,
+    })) as any
+    await LAMP.Type.setAttachment(x.id, "me", "lamp.dashboard.activity_details", {
+      description: x.description,
+      photo: x.icon,
+      streak: x.streak,
+      showFeed: x.showFeed,
+    })
+  }
+  return result
+}
+
+export async function saveCTestActivity(x) {
+  let newItem = (await LAMP.Activity.create(x.studyID, x)) as any
+  await LAMP.Type.setAttachment(newItem.data, "me", "lamp.dashboard.activity_details", {
+    description: x.description,
+    photo: x.photo,
+    streak: x.streak,
+    visualSettings: x?.visualSettings,
+    showFeed: x.showFeed,
+  })
+  return newItem
+}
+
+export async function saveSurveyActivity(x) {
+  const { raw, tag } = unspliceActivity(x)
+  let newItem = (await LAMP.Activity.create(x.studyID, raw)) as any
+  await LAMP.Type.setAttachment(newItem.data, "me", "lamp.dashboard.survey_description", tag)
+  return newItem
+}
+
+export async function getActivitySpec(spec) {
+  let result = await LAMP.ActivitySpec.view(spec)
+  return result
+}
+
+export async function getDefaultTab(spec) {
+  let activitySpec = await getActivitySpec(spec)
+  if (!!activitySpec?.category) {
+    return activitySpec?.category[0]
+  } else {
+    if (
+      games.includes(spec) ||
+      spec === "lamp.group" ||
+      spec === "lamp.dbt_diary_card" ||
+      spec === "lamp.recording" ||
+      spec === "lamp.survey" ||
+      spec === "lamp.zoom_meeting"
+    ) {
+      return "assess"
+    }
+    if (
+      spec === "lamp.goals" ||
+      spec === "lamp.medications" ||
+      spec === "lamp.journal" ||
+      spec === "lamp.breathe" ||
+      spec === "lamp.scratch_image"
+    ) {
+      return "manage"
+    }
+    if (spec === "lamp.tips") return "learn"
+  }
+}
+
+export const updateSchedule = async (activity) => {
+  await LAMP.Activity.update(activity.id, { schedule: activity.schedule })
+  Service.update("activities", { activities: [{ schedule: activity.schedule, id: activity.id }] }, "schedule", "id")
+}
+// Commit an update to an Activity object (ONLY DESCRIPTIONS).
+export async function updateActivityData(x, isDuplicated, selectedActivity) {
+  let result
+  if (!["lamp.group", "lamp.survey", "lamp.tips"].includes(x.spec)) {
+    // Short-circuit for groups and CTests
+    if (isDuplicated) {
+      result = (await LAMP.Activity.create(x.studyID, x)) as any
+      await LAMP.Type.setAttachment(result.data, "me", "lamp.dashboard.activity_details", {
+        description: x?.description ?? "",
+        photo: x?.photo ?? "",
+        streak: x?.streak ?? null,
+        visualSettings: x?.visualSettings,
+        showFeed: x?.showFeed,
+      })
+      return result
+    } else {
+      if (selectedActivity?.study_id !== x.studyID) {
+        // let tag = await LAMP.Type.setAttachment(x.id, "me", "lamp.dashboard.activity_details", null)
+        // await LAMP.Activity.delete(x.id)
+        // result = (await LAMP.Activity.create(x.studyID, x)) as any
+        // await LAMP.Type.setAttachment(result.data, "me", "lamp.dashboard.activity_details", {
+        //   description: x?.description ?? "",
+        //   photo: x?.photo ?? "",
+        // })
+      } else {
+        result = (await LAMP.Activity.update(x.id, x)) as any
+        await LAMP.Type.setAttachment(selectedActivity?.id, "me", "lamp.dashboard.activity_details", {
+          description: x.description,
+          photo: x.photo,
+          streak: x.streak,
+          visualSettings: x?.visualSettings,
+          showFeed: x?.showFeed,
+        })
+        return result
+      }
+    }
+  } else if (x.spec === "lamp.group" || x.spec === "lamp.dbt_diary_card") {
+    if (isDuplicated) {
+      result = (await LAMP.Activity.create(x.studyID, x)) as any
+      await LAMP.Type.setAttachment(result.data, "me", "lamp.dashboard.activity_details", {
+        description: x.description,
+        photo: x.photo,
+        streak: x.streak,
+        showFeed: x?.showFeed,
+      })
+      return result
+    } else {
+      result = (await LAMP.Activity.update(selectedActivity?.id, x)) as any
+
+      await LAMP.Type.setAttachment(selectedActivity?.id, "me", "lamp.dashboard.activity_details", {
+        description: x.description,
+        photo: x.photo,
+        streak: x.streak,
+        showFeed: x?.showFeed,
+      })
+      return result
+    }
+  } else if (x.spec === "lamp.survey") {
+    const { raw, tag } = unspliceActivity(x)
+    if (isDuplicated) {
+      result = (await LAMP.Activity.create(x.studyID, raw)) as any
+      await LAMP.Type.setAttachment(result.data, "me", "lamp.dashboard.survey_description", tag)
+      return result
+    } else {
+      result = (await LAMP.Activity.update(selectedActivity?.id, raw)) as any
+      await LAMP.Type.setAttachment(selectedActivity?.id, "me", "lamp.dashboard.survey_description", tag)
+      return result
+    }
+  } else if (x.spec === "lamp.tips") {
+    if (x.id === undefined) {
+      let tipObj = {
+        id: x.id,
+        name: x.name,
+        icon: x.icon,
+        studyID: selectedActivity?.study_id,
+        spec: "lamp.tips",
+        settings: x.settings,
+        streak: x.streak,
+        showFeed: x?.showFeed,
+        schedule: [],
+        category: x.category,
+      }
+      result = await saveTipActivity(tipObj)
+      return result
+    } else {
+      result = (await LAMP.Activity.update(selectedActivity?.id, x)) as any
+      await LAMP.Type.setAttachment(selectedActivity?.id, "me", "lamp.dashboard.activity_details", {
+        photo: x.icon,
+        streak: x.streak,
+        visualSettings: x?.visualSettings,
+        showFeed: x?.showFeed,
+      })
+      return result
+    }
+  }
+}
+export function addActivity(x, studies) {
+  Service.updateCount("studies", x.studyID, "activity_count")
+  x["study_id"] = x.studyID
+  x["study_name"] = studies.filter((study) => study.id === x.studyID)[0]?.name
+  delete x["studyID"]
+  Service.addData("activities", [x])
+}

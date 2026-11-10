@@ -1,0 +1,545 @@
+.col {
+  overflow: hidden;
+  text-align: center;
+}
+
+.main-class {
+  height: calc(100% - 60px);
+}
+
+body {
+  /* background: rgba(53, 159, 254, 1) !important; */
+  background: #f4f4f4 !important;
+}
+
+nav a {
+  color: rgba(53, 159, 254, 1);
+  padding: 10px;
+  display: inline-block;
+}
+
+.App {
+  padding-top: 2em;
+  text-align: center;
+}
+
+.App-logo {
+  -webkit-animation: App-logo-spin infinite 20s linear;
+  animation: App-logo-spin infinite 20s linear;
+  height: 80px;
+}
+
+.App-header {
+  height: 90px;
+  padding: 20px;
+  color: #fff;
+}
+
+.App-intro {
+  font-size: large;
+}
+
+/* Fixed 52px header per the style guide. The nav controls are children of the
+   bar rather than siblings, so they position against it instead of the page. */
+.heading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 52px;
+  color: #fff;
+  font-size: 18px;
+  font-weight: 600;
+  background: rgba(53, 159, 254, 1);
+  position: relative;
+}
+
+/* The nav controls are absolutely positioned over the bar, so the centred
+   title has to be bounded away from them; without this it slides under the
+   refresh icon at 375px and narrower. */
+.heading-title {
+  max-width: calc(100% - 200px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media only screen and (max-width: 420px) {
+  .heading {
+    font-size: 16px;
+  }
+}
+
+.back-link {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  color: white;
+  cursor: pointer;
+  z-index: 10;
+}
+
+.home-link {
+  position: absolute;
+  right: 0;
+  top: 0;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  color: white;
+  cursor: pointer;
+  z-index: 10;
+}
+
+.home-link-forward {
+  position: absolute;
+  right: 48px;
+  top: 0;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  color: white;
+  cursor: pointer;
+  z-index: 10;
+}
+
+.back-link svg path,
+.home-link svg path,
+.home-link-forward svg path {
+  fill: #fff;
+}
+
+.game-board {
+  color: #fff;
+  text-align: center;
+}
+
+.btn-primary:hover {
+  background: #007bff !important;
+  border: none;
+}
+
+.box-game {
+  padding: 0 30px;
+  margin: auto;
+  color: #fff;
+  font-size: 20px;
+}
+
+.box-game p,
+.box-game h6 {
+  color: #359ffe;
+}
+
+.box-game p {
+  font-weight: 600;
+}
+
+.imgOption {
+  width: 100%;
+  max-width: 400px;
+  height: auto;
+  margin: 0 auto;
+}
+
+.imgOption img {
+  max-width: 400px;
+  max-height: 400px;
+  width: 100%;
+  margin-top: 20px;
+  cursor: pointer;
+}
+
+.mt-30 {
+  margin-top: 30px;
+}
+
+.error-class {
+  color: red;
+  font-size: 20px;
+  font-weight: bold;
+  top: 15px;
+  position: relative;
+}
+
+.error-message {
+  color: red;
+  font-size: 12px;
+  font-weight: bold;
+  position: relative;
+}
+
+.index {
+  color: rgba(53, 159, 254, 1);
+}
+
+.question {
+  color: black;
+  padding-top: 10px;
+  font-size: 30px;
+  font-weight: 450;
+}
+
+.begin {
+  text-align: left;
+  margin-left: 10%;
+}
+
+.start-button {
+  color: white !important;
+  background: rgb(73, 151, 208);
+  border: none;
+  width: 150px;
+  border-radius: 0rem;
+}
+
+.image {
+  height: 40%;
+}
+
+.emotions {
+  padding-bottom: 10px;
+}
+
+input[type="checkbox"] {
+  margin-right: 10px;
+  accent-color: black;
+}
+
+.btn-primary:focus {
+  box-shadow: none !important;
+  background: rgb(73, 151, 208) !important;
+}
+
+.btn-primary:hover {
+  background: #007bff !important;
+}
+
+.btn-outline-secondary {
+  background: none;
+  color: #007bff;
+  border: none;
+}
+
+/* Status bar per the style guide. Rendered unconditionally so the game area
+   below it does not shift when the phase label changes or empties. */
+.status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 8px 16px;
+  min-height: 44px;
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.level-badge {
+  background: rgba(255, 255, 255, 0.85);
+  color: #1a1a2e;
+  padding: 4px 14px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+@media only screen and (max-width: 500px) {
+  .level-badge {
+    font-size: 11px;
+    padding: 3px 10px;
+  }
+}
+/* Loading overlay, replacing the Material-UI Backdrop/CircularProgress pair. */
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.backdrop .spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: backdrop-spin 1s linear infinite;
+}
+
+@keyframes backdrop-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .backdrop .spinner {
+    animation-duration: 3s;
+  }
+}
+
+@media only screen and (min-width: 500px) {
+  .modal-content {
+    margin-left: 20%;
+  }
+
+  .begin {
+    text-align: left;
+    margin-left: 35%;
+  }
+
+  .img-thumbnail {
+    height: 280px !important;
+  }
+}
+
+.memory-outer {
+  background-color: #fff;
+  padding: 15px 30px 15px 30px;
+  border-radius: 5px;
+  text-align: left;
+  width: 100%;
+  max-width: 650px;
+  margin: 0 auto 30px;
+}
+
+.marginTop10 {
+  margin-top: 12px;
+}
+
+.react-datepicker__time-list-item {
+  display: flex;
+  align-items: center;
+}
+
+.question-nav {
+  background-color: #f4f4f4;
+  padding: 15px 20px;
+  margin-bottom: 15px;
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.question-nav p {
+  color: #333;
+  font-size: 14px;
+  margin-top: 0;
+  font-weight: 600;
+  margin-bottom: 5px;
+}
+
+.react-datepicker__input-container input {
+  border: #ccc solid 1px;
+  padding: 10px;
+  border-radius: 3px;
+  font-size: 14px;
+  min-width: 202px;
+}
+
+.react-datepicker__input-container input:focus-visible,
+.question-nav select {
+  outline: 0;
+}
+
+.question-nav select {
+  border: #ccc solid 1px;
+  padding: 10px;
+  border-radius: 3px;
+  min-width: 202px;
+  font-size: 14px;
+}
+
+.question-nav button {
+  border: #ccc solid 1px;
+  padding: 10px;
+  border-radius: 3px;
+  min-width: 202px;
+  font-size: 14px;
+  text-align: left;
+}
+
+.react-datepicker--time-only .react-datepicker__triangle {
+  left: -40px !important;
+}
+
+.img-wrap-main {
+  display: flex;
+  justify-content: center;
+}
+
+#img-wrapper {
+  display: flex;
+  flex-wrap: wrap;
+  width: 100%;
+  max-width: 500px;
+  justify-content: center;
+  gap: 12px;
+}
+
+/* The v2 library mixes portrait, square and landscape sources, so each option
+   sits in a fixed square frame and the image is contained rather than cropped.
+   Without this, differently-shaped stimuli render at different sizes in the
+   recognition grid. */
+#img-wrapper img {
+  width: 100%;
+  height: 100%;
+  max-width: 200px;
+  max-height: 200px;
+  object-fit: contain;
+  background: #f5f5f5;
+  cursor: pointer;
+}
+
+#img-wrapper > div {
+  flex: 0 1 calc(50% - 6px);
+  aspect-ratio: 1 / 1;
+  max-width: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@media only screen and (max-width: 420px) {
+  #img-wrapper {
+    gap: 8px;
+  }
+
+  #img-wrapper > div {
+    flex-basis: calc(50% - 4px);
+  }
+}
+
+/* Placeholder for a stimulus that could not be fetched, so the remaining
+   options stay selectable instead of the whole grid staying hidden. Sizing is
+   inherited from the option rule above; border-box keeps the padding and
+   border inside that square, otherwise the tile outgrows its neighbours and
+   wraps onto a row of its own. */
+#img-wrapper > div.option-unavailable {
+  box-sizing: border-box;
+  padding: 12px;
+  border: 1px dashed #c4c4c4;
+  border-radius: 4px;
+  background: #f5f5f5;
+  color: #767676;
+  font-size: 0.85rem;
+  text-align: center;
+  cursor: default;
+}
+
+.image-load-error {
+  color: #767676;
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+#img-wrapper div.active img {
+  border: #359ffe solid 3px;
+}
+
+@media only screen and (min-width: 1100px) {
+  .modal-content {
+    margin-left: 20%;
+  }
+
+  .begin {
+    text-align: left;
+    margin-left: 37%;
+  }
+}
+
+.microphone-icon {
+  background-color: #ff0000;
+  width: 60px;
+  height: 60px;
+  padding: 10px;
+  border-radius: 50%;
+  cursor: pointer;
+  margin: 50px auto;
+  -webkit-box-shadow: 0px 0px 9px 0px rgba(0, 0, 0, 0.54);
+  -moz-box-shadow: 0px 0px 9px 0px rgba(0, 0, 0, 0.54);
+  box-shadow: 0px 0px 9px 0px rgba(0, 0, 0, 0.54);
+}
+
+.microphone-icon-dissable {
+  background-color: #999;
+}
+.cursor-pointer {
+  cursor: pointer;
+}
+
+.microphone-icon svg {
+  width: 80%;
+}
+
+.microphone-icon svg path {
+  fill: #fff;
+}
+
+.microphone-status {
+  font-size: 14px;
+  color: #3b3b3b;
+}
+
+.btn-stop {
+  color: #fff;
+  background-color: #359ffe;
+  padding: 10px 25px;
+  border: 0;
+  border-radius: 25px;
+  margin-top: 16px;
+  font-weight: 600;
+  min-width: 106px;
+}
+
+.btn-submit {
+  color: #fff;
+  background-color: #359ffe !important;
+  padding: 10px 25px 12px !important;
+  border: 0 !important;
+  border-radius: 25px;
+  font-weight: 600;
+  min-width: 106px;
+}
+
+.btn-submit-disabled {
+  color: #999;
+  background-color: #b6b6b6 !important;
+  padding: 10px 25px 12px !important;
+  border: 0 !important;
+  border-radius: 25px;
+  font-weight: 600;
+  min-width: 106px;
+}
+
+.btn-cancel {
+  color: #359ffe;
+  background-color: transparent;
+  padding: 8px 25px;
+  border: #359ffe solid 2px;
+  border-radius: 25px;
+  margin-top: 16px;
+  font-weight: 600;
+  margin-right: 10px;
+}
+
+.btn-cancel:hover {
+  border: #359ffe solid 2px;
+  background-color: #eee !important;
+  color: #359ffe;
+}
+
+.lamp-datepicker {
+  background-color: #fff;
+  height: 40.8px;
+  padding: 8px 10px !important;
+}

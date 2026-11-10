@@ -1,0 +1,78 @@
+<resources>
+    <string name="app_name">mindLAMP</string>
+
+    <string name="log_accelerometer_null" translatable="false">Aware error NULL : Accelerometer data does not exist.</string>
+    <string name="log_accelerometer_error" translatable="false">Aware error CRASH : Accelerometer data could not be retrieved.</string>
+    <string name="log_gyroscope_null" translatable="false">Aware error NULL : Gyroscope data does not exist.</string>
+    <string name="log_gyroscope_error" translatable="false">Aware error CRASH : Gyroscope data could not be retrieved.</string>
+    <string name="log_location_null" translatable="false">Aware error NULL : Location data does not exist.</string>
+    <string name="log_location_error" translatable="false">Aware error CRASH : Location data could not be retrieved.</string>
+    <string name="log_magnetometer_null" translatable="false">Aware error NULL : Magnetometer data does not exist.</string>
+    <string name="log_magnetometer_error" translatable="false">Aware error CRASH : Magnetometer data could not be retrieved.</string>
+    <string name="log_rotation_null" translatable="false">Aware error NULL : Rotation data does not exist.</string>
+    <string name="log_rotation_error" translatable="false">Aware error CRASH : Rotation data could not be retrieved.</string>
+    <string name="log_screen_state_error" translatable="false">Aware error CRASH : ScreenState data could not be retrieved.</string>
+    <string name="log_wifi_null" translatable="false">Aware error NULL : Wifi data does not exist.</string>
+    <string name="log_wifi_error" translatable="false">Aware error CRASH : Wifi data could not be retrieved.</string>
+    <string name="log_activity_null" translatable="false">Aware error NULL : Activity Transition data does not exist.</string>
+    <string name="log_activity_error" translatable="false">Aware error CRASH : Activity Transition data could not be retrieved.</string>
+    <string name="channel_description">MindLamp Active Data Collection</string>
+    <string name="app_disclosure">This app collects location data for clinical use and research studies even when the app is closed or not in use. Your data is HIPAA-compliant and de-identified. It is stored in a secured, encrypted format accessible only to your clinician and/or research study coordinators.</string>
+    <string name="local_notification_text">You have a mindLAMP activity waiting for you: %s</string>
+    <string name="notification_action">Open App</string>
+    <string name="location_status_background_allowed">Allow all the time</string>
+    <string name="location_status_allowed">Allow only while using the app</string>
+    <string name="location_status_denied">Denied</string>
+
+    <string name="location_permission">Location Permission Needed</string>
+    <string name="ok">OK</string>
+    <string name="hc_install" translatable="false">INSTALL</string>
+
+    <string name="gps_enable">Location is currently disabled on your device. Please enable it.</string>
+    <string name="unexpected_error">Something went wrong. Please try again later.</string>
+    <string name="txt_no_internet">You are not connected to the internet.</string>
+    <string name="txt_unable_to_connect">Unable to connect to server. Please try again later.</string>
+    <string name="dialog_message_service_permissions_are_required_for_this_app">Service Permissions are required for this app</string>
+    <string name="cancel">Cancel</string>
+    <string name="server_unreachable">Server is unreachable.</string>
+    <string name="user_not_found">User not found.</string>
+    <string name="something_went_wrong">Something went wrong. Please try again later.</string>
+    <string name="something_went_wrong_on_server">Something went wrong on server. Please try again later.</string>
+
+    <string name="kb" translatable="false">KB</string>
+    <string name="mb" translatable="false">MB</string>
+    <string name="invalid_request_please_try_again">Invalid request. Please try again later.</string>
+    <string name="you_are_not_authorized">You are not authorized.</string>
+    <string name="you_dont_have_access">You don\'t have access.</string>
+    <string name="user_not_found_here">User not found.</string>
+    <string name="request_timeout">Request timeout.</string>
+    <string name="bad_gateway">Bad Gateway.</string>
+    <string name="service_not_available">Service is unavailable. Please try again later.</string>
+    <string name="unknown" translatable="false">Unknown</string>
+    <string name="unused" translatable="false">Unused</string>
+    <string name="awake_during_sleep" translatable="false">Awake (during sleep)</string>
+    <string name="sleep" translatable="false">Sleep</string>
+    <string name="out_of_bed" translatable="false">Out-of-bed</string>
+    <string name="light_sleep" translatable="false">Light sleep</string>
+    <string name="deep_sleep" translatable="false">Deep sleep</string>
+    <string name="rem_sleep" translatable="false">REM sleep</string>
+    <string name="active_data_collection">MindLamp Active Data Collection</string>
+    <string name="server_un_rechable">Server is unreachable.</string>
+    <string name="you_are_not_connected">You are not connected to the internet</string>
+    <string name="server_not_reachable">Server not reachable.</string>
+    <string name="mindlamp_service">MindLamp Service</string>
+    <string name="back">Back</string>
+    <string name="retry">Retry</string>
+    <string name="ssl_error" translatable="false">SSL Error</string>
+    <string name="battery_optimization_info" translatable="false"> mindLAMP requires unrestricted battery access for collecting data effectively. Please disable battery optimization for the app to function properly.</string>
+    <string name="location_permission_info_for_wifi_access" translatable="false"> Enable your device\'s location to collect the Wi-Fi data effectively.</string>
+    <string name="hc_not_installed_description" translatable="false">
+        Health Connect is supported on this device, but is either not installed, or requires an update.
+    </string>
+    <string name="current_streak_days" translatable="false">Current streak </string>
+    <string name="longest_streak_days" translatable="false">Longest streak </string>
+    <string name="way_to_go" translatable="false">Way To Go!</string>
+    <string name="health_permission_description">This application integrates with Google Health Connect to securely access and analyze health and fitness data already collected by other devices and applications on your device. The types of data accessed may include: Steps, Sleep, Distance, Calories Burned, Heart Rate, Blood Pressure, Blood Glucose, Oxygen Saturation, Body Temperature, Respiratory Rate, Body Fat, Hydration, Nutrition, and Movement Speed.   \n
+        All health data is accessed solely for use within authorized clinical research studies conducted by the Beth Israel Deaconess Medical Center Division of Digital Psychiatry and its collaborating healthcare institutions. No health data will be collected or transmitted without your explicit informed consent. You may revoke Health Connect permissions at any time through your device settings without affecting your participation in other aspects of the study.</string>
+    <string name="agree" translatable="false">Agree</string>
+</resources>

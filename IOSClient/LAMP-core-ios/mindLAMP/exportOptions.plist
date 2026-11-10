@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>method</key>
+	<string>app-store</string>
+	<key>uploadBitcode</key>
+	<false/>
+	<key>uploadSymbols</key>
+	<true/>
+	<key>provisioningProfiles</key>
+	<dict>
+		<key>digital.lamp.mindlamp</key>
+		<string>mindLAMP2</string>
+		<key>digital.lamp.mindlamp.CustomNotification</key>
+		<string>mindLAMP2 Custom Notification Extension</string>
+		<key>digital.lamp.mindlamp.NotificationService</key>
+		<string>mindLAMP2 Notification Service</string>
+		<key>digital.lamp.mindlamp.wearable</key>
+		<string>mindLAMP2 WatchApp</string>
+		<key>digital.lamp.mindlamp.wearable.extension</key>
+		<string>mindLAMP2 WatchApp Extension</string>
+		<key>digital.lamp.mindlamp.StreakWidget</key>
+		<string>mindLAMP2_StreakWidget</string>
+	</dict>
+</dict>
+</plist>

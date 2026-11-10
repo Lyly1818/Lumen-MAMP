@@ -1,0 +1,1052 @@
+import nano from "nano"
+import crypto from "crypto"
+import { customAlphabet } from "nanoid"
+import { connect, Payload, Client } from "ts-nats"
+import {
+  ResearcherRepository,
+  StudyRepository,
+  ParticipantRepository,
+  ActivityRepository,
+  SensorRepository,
+  ActivityEventRepository,
+  SensorEventRepository,
+  ActivitySpecRepository,
+  SensorSpecRepository,
+  CredentialRepository,
+  TypeRepository,
+} from "./couch"
+import {
+  ResearcherRepository as ResearcherRepositoryMongo,
+  StudyRepository as StudyRepositoryMongo,
+  ParticipantRepository as ParticipantRepositoryMongo,
+  ActivityRepository as ActivityRepositoryMongo,
+  SensorRepository as SensorRepositoryMongo,
+  ActivityEventRepository as ActivityEventRepositoryMongo,
+  SensorEventRepository as SensorEventRepositoryMongo,
+  ActivitySpecRepository as ActivitySpecRepositoryMongo,
+  SensorSpecRepository as SensorSpecRepositoryMongo,
+  CredentialRepository as CredentialRepositoryMongo,
+  TypeRepository as TypeRepositoryMongo,
+} from "./mongo"
+import {
+  ResearcherInterface,
+  StudyInterface,
+  ParticipantInterface,
+  ActivityInterface,
+  SensorInterface,
+  ActivityEventInterface,
+  SensorEventInterface,
+  ActivitySpecInterface,
+  SensorSpecInterface,
+  CredentialInterface,
+  TypeInterface,
+} from "./interface/RepositoryInterface"
+import ioredis from "ioredis"
+import { initializeQueues } from "../utils/queue/Queue"
+import { auth, Encrypt } from "../utils/auth"
+import { mongoClientInstance } from "../utils/mongoClient"
+import { SetupStates } from "../utils/accountSecurityUtilities"
+export let RedisClient: ioredis.Redis
+export let nc: Client
+export let MongoClientDB: any
+export const ApiResponseHeaders = {
+  "Cache-Control": "no-store",
+  "Content-Security-Policy": "default-src 'self'; script-src 'self'; object-src 'none'; frame-ancestors 'none'",
+  "X-XSS-Protection": "1; mode=block",
+  "X-Content-Type-Options": "nosniff",
+  "X-Frame-Options": "DENY",
+  "Strict-Transport-Security": "max-age=63072000; includeSubdomains; preload",
+  "Referrer-Policy": "no-referrer",
+  "Permissions-Policy": "geolocation=(), camera=(), microphone=()",
+}
+//initialize driver for db
+let DB_DRIVER = ""
+//Identifying the Database driver -- IF the DB in env starts with mongodb://, create mongodb connection
+//--ELSEIF the DB/CDB in env starts with http or https, create couch db connection
+if (process.env.DB?.startsWith("mongodb://")) {
+  DB_DRIVER = "mongodb"
+} else if (process.env.DB?.startsWith("http") || process.env.DB?.startsWith("https")) {
+  DB_DRIVER = "couchdb"
+  console.log(`COUCHDB adapter in use `)
+} else {
+  if (process.env.CDB?.startsWith("http") || process.env.CDB?.startsWith("https")) {
+    DB_DRIVER = "couchdb"
+    console.log(`COUCHDB adapter in use `)
+  } else {
+    console.log(`Missing repository adapter.`)
+  }
+}
+
+//IF the DB/CDB in env starts with http or https, create and export couch db connection
+export const Database: any =
+  process.env.DB?.startsWith("http") || process.env.DB?.startsWith("https")
+    ? nano(process.env.DB ?? "")
+    : process.env.CDB?.startsWith("http") || process.env.CDB?.startsWith("https")
+    ? nano(process.env.CDB ?? "")
+    : ""
+
+export const uuid = customAlphabet("1234567890abcdefghjkmnpqrstvwxyz", 20)
+export const numeric_uuid = (): string => `U${Math.random().toFixed(10).slice(2, 12)}`
+// Initialize the CouchDB databases if any of them do not exist.
+export async function Bootstrap(): Promise<void> {
+  if (typeof process.env.REDIS_HOST === "string") {
+    try {
+      RedisClient = RedisFactory.getInstance()
+      console.log("Trying to connect redis")
+      RedisClient.on("connect", () => {
+        console.log("Connected to redis")
+        initializeQueues()
+      })
+      RedisClient.on("error", async (err: any) => {
+        console.log("redis connection error", err)
+        RedisClient = RedisFactory.getInstance()
+      })
+      RedisClient.on("disconnected", async () => {
+        console.log("redis disconnected")
+        RedisClient = RedisFactory.getInstance()
+      })
+    } catch (err) {
+      console.log("Error initializing redis", err)
+    }
+  }
+  await NatsConnect()
+
+  if (DB_DRIVER === "couchdb") {
+    console.group("Initializing database connection...")
+    const _db_list = await Database.db.list()
+    if (!_db_list.includes("activity_spec")) {
+      console.log("Initializing ActivitySpec database...")
+      await Database.db.create("activity_spec")
+    }
+    console.log("ActivitySpec database online.")
+    if (!_db_list.includes("sensor_spec")) {
+      console.log("Initializing SensorSpec database...")
+      await Database.db.create("sensor_spec")
+    }
+    console.log("SensorSpec database online.")
+    if (!_db_list.includes("researcher")) {
+      console.log("Initializing Researcher database...")
+      await Database.db.create("researcher")
+      Database.use("researcher").bulk({
+        docs: [
+          {
+            _id: "_design/timestamp-index",
+            language: "query",
+            views: {
+              timestamp: {
+                map: {
+                  fields: {
+                    timestamp: "asc",
+                  },
+                  partial_filter_selector: {},
+                },
+                reduce: "_count",
+                options: {
+                  def: {
+                    fields: ["timestamp"],
+                  },
+                },
+              },
+            },
+          },
+          {
+            _id: "_design/parent-timestamp-index",
+            language: "query",
+            views: {
+              "parent-timestamp": {
+                map: {
+                  fields: {
+                    "#parent": "asc",
+                    timestamp: "asc",
+                  },
+                  partial_filter_selector: {},
+                },
+                reduce: "_count",
+                options: {
+                  def: {
+                    fields: ["#parent", "timestamp"],
+                  },
+                },
+              },
+            },
+          },
+          {
+            _id: "_design/id-parent-timestamp-index",
+            language: "query",
+            views: {
+              "id-parent-timestamp": {
+                map: {
+                  fields: {
+                    _id: "asc",
+                    "#parent": "asc",
+                    timestamp: "asc",
+                  },
+                  partial_filter_selector: {},
+                },
+                reduce: "_count",
+                options: {
+                  def: {
+                    fields: ["_id", "#parent", "timestamp"],
+                  },
+                },
+              },
+            },
+          },
+        ],
+      })
+    }
+    console.log("Researcher database online.")
+    if (!_db_list.includes("study")) {
+      console.log("Initializing Study database...")
+      await Database.db.create("study")
+      Database.use("study").bulk({
+        docs: [
+          {
+            _id: "_design/timestamp-index",
+            language: "query",
+            views: {
+              timestamp: {
+                map: {
+                  fields: {
+                    timestamp: "asc",
+                  },
+                  partial_filter_selector: {},
+                },
+                reduce: "_count",
+                options: {
+                  def: {
+                    fields: ["timestamp"],
+                  },
+                },
+              },
+            },
+          },
+          {
+            _id: "_design/parent-timestamp-index",
+            language: "query",
+            views: {
+              "parent-timestamp": {
+                map: {
+                  fields: {
+                    "#parent": "asc",
+                    timestamp: "asc",
+                  },
+                  partial_filter_selector: {},
+                },
+                reduce: "_count",
+                options: {
+                  def: {
+                    fields: ["#parent", "timestamp"],
+                  },
+                },
+              },
+            },
+          },
+          {
+            _id: "_design/id-parent-timestamp-index",
+            language: "query",
+            views: {
+              "id-parent-timestamp": {
+                map: {
+                  fields: {
+                    _id: "asc",
+                    "#parent": "asc",
+                    timestamp: "asc",
+                  },
+                  partial_filter_selector: {},
+                },
+                reduce: "_count",
+                options: {
+                  def: {
+                    fields: ["_id", "#parent", "timestamp"],
+                  },
+                },
+              },
+            },
+          },
+        ],
+      })
+    }
+    console.log("Study database online.")
+    if (!_db_list.includes("participant")) {
+      console.log("Initializing Participant database...")
+      await Database.db.create("participant")
+      Database.use("participant").bulk({
+        docs: [
+          {
+            _id: "_design/timestamp-index",
+            language: "query",
+            views: {
+              timestamp: {
+                map: {
+                  fields: {
+                    timestamp: "asc",
+                  },
+                  partial_filter_selector: {},
+                },
+                reduce: "_count",
+                options: {
+                  def: {
+                    fields: ["timestamp"],
+                  },
+                },
+              },
+            },
+          },
+          {
+            _id: "_design/parent-timestamp-index",
+            language: "query",
+            views: {
+              "parent-timestamp": {
+                map: {
+                  fields: {
+                    "#parent": "asc",
+                    timestamp: "asc",
+                  },
+                  partial_filter_selector: {},
+                },
+                reduce: "_count",
+                options: {
+                  def: {
+                    fields: ["#parent", "timestamp"],
+                  },
+                },
+              },
+            },
+          },
+          {
+            _id: "_design/id-parent-timestamp-index",
+            language: "query",
+            views: {
+              "id-parent-timestamp": {
+                map: {
+                  fields: {
+                    _id: "asc",
+                    "#parent": "asc",
+                    timestamp: "asc",
+                  },
+                  partial_filter_selector: {},
+                },
+                reduce: "_count",
+                options: {
+                  def: {
+                    fields: ["_id", "#parent", "timestamp"],
+                  },
+                },
+              },
+            },
+          },
+        ],
+      })
+    }
+    console.log("Participant database online.")
+    if (!_db_list.includes("activity")) {
+      console.log("Initializing Activity database...")
+      await Database.db.create("activity")
+      Database.use("activity").bulk({
+        docs: [
+          {
+            _id: "_design/timestamp-index",
+            language: "query",
+            views: {
+              timestamp: {
+                map: {
+                  fields: {
+                    timestamp: "asc",
+                  },
+                  partial_filter_selector: {},
+                },
+                reduce: "_count",
+                options: {
+                  def: {
+                    fields: ["timestamp"],
+                  },
+                },
+              },
+            },
+          },
+          {
+            _id: "_design/parent-timestamp-index",
+            language: "query",
+            views: {
+              "parent-timestamp": {
+                map: {
+                  fields: {
+                    "#parent": "asc",
+                    timestamp: "asc",
+                  },
+                  partial_filter_selector: {},
+                },
+                reduce: "_count",
+                options: {
+                  def: {
+                    fields: ["#parent", "timestamp"],
+                  },
+                },
+              },
+            },
+          },
+          {
+            _id: "_design/id-parent-timestamp-index",
+            language: "query",
+            views: {
+              "id-parent-timestamp": {
+                map: {
+                  fields: {
+                    _id: "asc",
+                    "#parent": "asc",
+                    timestamp: "asc",
+                  },
+                  partial_filter_selector: {},
+                },
+                reduce: "_count",
+                options: {
+                  def: {
+                    fields: ["_id", "#parent", "timestamp"],
+                  },
+                },
+              },
+            },
+          },
+          {
+            _id: "_design/id-timestamp-index",
+            language: "query",
+            views: {
+              "id-timestamp": {
+                map: {
+                  fields: {
+                    _id: "asc",
+                    timestamp: "asc",
+                  },
+                  partial_filter_selector: {},
+                },
+                reduce: "_count",
+                options: {
+                  def: {
+                    fields: ["_id", "timestamp"],
+                  },
+                },
+              },
+            },
+          },
+        ],
+      })
+    }
+    console.log("Activity database online.")
+    if (!_db_list.includes("sensor")) {
+      console.log("Initializing Sensor database...")
+      await Database.db.create("sensor")
+      Database.use("sensor").bulk({
+        docs: [
+          {
+            _id: "_design/timestamp-index",
+            language: "query",
+            views: {
+              timestamp: {
+                map: {
+                  fields: {
+                    timestamp: "asc",
+                  },
+                  partial_filter_selector: {},
+                },
+                reduce: "_count",
+                options: {
+                  def: {
+                    fields: ["timestamp"],
+                  },
+                },
+              },
+            },
+          },
+          {
+            _id: "_design/parent-timestamp-index",
+            language: "query",
+            views: {
+              "parent-timestamp": {
+                map: {
+                  fields: {
+                    "#parent": "asc",
+                    timestamp: "asc",
+                  },
+                  partial_filter_selector: {},
+                },
+                reduce: "_count",
+                options: {
+                  def: {
+                    fields: ["#parent", "timestamp"],
+                  },
+                },
+              },
+            },
+          },
+          {
+            _id: "_design/id-parent-timestamp-index",
+            language: "query",
+            views: {
+              "id-parent-timestamp": {
+                map: {
+                  fields: {
+                    _id: "asc",
+                    "#parent": "asc",
+                    timestamp: "asc",
+                  },
+                  partial_filter_selector: {},
+                },
+                reduce: "_count",
+                options: {
+                  def: {
+                    fields: ["_id", "#parent", "timestamp"],
+                  },
+                },
+              },
+            },
+          },
+        ],
+      })
+    }
+    console.log("Sensor database online.")
+    if (!_db_list.includes("activity_event")) {
+      console.log("Initializing ActivityEvent database...")
+      await Database.db.create("activity_event")
+      Database.use("activity_event").bulk({
+        docs: [
+          {
+            _id: "_design/parent-activity-timestamp-index",
+            language: "query",
+            views: {
+              "parent-activity-timestamp": {
+                map: {
+                  fields: {
+                    "#parent": "desc",
+                    activity: "desc",
+                    timestamp: "desc",
+                  },
+                  partial_filter_selector: {},
+                },
+                reduce: "_count",
+                options: {
+                  def: {
+                    fields: [
+                      {
+                        "#parent": "desc",
+                      },
+                      {
+                        activity: "desc",
+                      },
+                      {
+                        timestamp: "desc",
+                      },
+                    ],
+                  },
+                },
+              },
+            },
+          },
+          {
+            _id: "_design/parent-timestamp-index",
+            language: "query",
+            views: {
+              "parent-timestamp": {
+                map: {
+                  fields: {
+                    "#parent": "desc",
+                    timestamp: "desc",
+                  },
+                  partial_filter_selector: {},
+                },
+                reduce: "_count",
+                options: {
+                  def: {
+                    fields: [
+                      {
+                        "#parent": "desc",
+                      },
+                      {
+                        timestamp: "desc",
+                      },
+                    ],
+                  },
+                },
+              },
+            },
+          },
+        ],
+      })
+    }
+    console.log("ActivityEvent database online.")
+    if (!_db_list.includes("sensor_event")) {
+      console.log("Initializing SensorEvent database...")
+      await Database.db.create("sensor_event")
+      Database.use("sensor_event").bulk({
+        docs: [
+          {
+            _id: "_design/parent-sensor-timestamp-index",
+            language: "query",
+            views: {
+              "parent-sensor-timestamp": {
+                map: {
+                  fields: {
+                    "#parent": "desc",
+                    sensor: "desc",
+                    timestamp: "desc",
+                  },
+                  partial_filter_selector: {},
+                },
+                reduce: "_count",
+                options: {
+                  def: {
+                    fields: [
+                      {
+                        "#parent": "desc",
+                      },
+                      {
+                        sensor: "desc",
+                      },
+                      {
+                        timestamp: "desc",
+                      },
+                    ],
+                  },
+                },
+              },
+            },
+          },
+          {
+            _id: "_design/parent-timestamp-index",
+            language: "query",
+            views: {
+              "parent-timestamp": {
+                map: {
+                  fields: {
+                    "#parent": "desc",
+                    timestamp: "desc",
+                  },
+                  partial_filter_selector: {},
+                },
+                reduce: "_count",
+                options: {
+                  def: {
+                    fields: [
+                      {
+                        "#parent": "desc",
+                      },
+                      {
+                        timestamp: "desc",
+                      },
+                    ],
+                  },
+                },
+              },
+            },
+          },
+        ],
+      })
+    }
+    console.log("SensorEvent database online.")
+    if (!_db_list.includes("credential")) {
+      console.log("Initializing Credential database...")
+      await Database.db.create("credential")
+      Database.use("credential").bulk({
+        docs: [
+          {
+            _id: "_design/access_key-index",
+            language: "query",
+            views: {
+              access_key: {
+                map: {
+                  fields: {
+                    access_key: "asc",
+                  },
+                  partial_filter_selector: {},
+                },
+                reduce: "_count",
+                options: {
+                  def: {
+                    fields: ["access_key"],
+                  },
+                },
+              },
+            },
+          },
+          {
+            _id: "_design/origin-index",
+            language: "query",
+            views: {
+              origin: {
+                map: {
+                  fields: {
+                    origin: "asc",
+                  },
+                  partial_filter_selector: {},
+                },
+                reduce: "_count",
+                options: {
+                  def: {
+                    fields: ["origin"],
+                  },
+                },
+              },
+            },
+          },
+          {
+            _id: "_design/origin-access_key-index",
+            language: "query",
+            views: {
+              "origin-access_key": {
+                map: {
+                  fields: {
+                    origin: "asc",
+                    access_key: "asc",
+                  },
+                  partial_filter_selector: {},
+                },
+                reduce: "_count",
+                options: {
+                  def: {
+                    fields: ["origin", "access_key"],
+                  },
+                },
+              },
+            },
+          },
+        ],
+      })
+      console.dir(`An initial administrator password was generated and saved for this installation.`)
+      try {
+        // Create a new password and emit it to the console while saving it (to share it with the sysadmin).
+        const p = crypto.randomBytes(32).toString("hex")
+        console.table({ "Administrator Password": p })
+        await Database.use("credential").insert({
+          origin: null,
+          access_key: "admin",
+          secret_key: Encrypt(p, "AES256"),
+          description: "System Administrator Credential",
+          user_type: "admin",
+          account_setup_state: SetupStates.NOT_REQUIRED,
+          additional_setup_exempt: true
+        } as any)
+      } catch (e) {
+        console.dir(e)
+      }
+    }
+    console.log("Credential database online.")
+    if (!_db_list.includes("tag")) {
+      console.log("Initializing Tag database...")
+      await Database.db.create("tag")
+      Database.use("tag").bulk({
+        docs: [
+          {
+            _id: "_design/parent-type-key-index",
+            language: "query",
+            views: {
+              "parent-type-key": {
+                map: {
+                  fields: {
+                    "#parent": "asc",
+                    type: "asc",
+                    key: "asc",
+                  },
+                  partial_filter_selector: {},
+                },
+                reduce: "_count",
+                options: {
+                  def: {
+                    fields: ["#parent", "type", "key"],
+                  },
+                },
+              },
+            },
+          },
+        ],
+      })
+    }
+    console.log("Tag database online.")
+    console.groupEnd()
+    console.log("Database verification complete.")
+  } else {
+    //Connect to mongoDB ---Old code before updating the mongo version, ie 3.2
+    // const client = new MongoClient(`${process.env.DB}`, {
+    //   useNewUrlParser: true,
+    //   useUnifiedTopology: true,
+    // })
+    const client = mongoClientInstance
+    try {
+      await client.connect()
+    } catch (error) {
+      console.dir(error)
+    }
+    // return new Promise((resolve, reject) => {
+    try {
+      console.group("Initializing database connection...")
+      // Old code before updating the mongo version, ie 3.2, currently client.isconnected not supporting new versions
+      // if (client.isConnected()) {
+      //   const db = process.env.DB?.split("/").reverse()[0]?.split("?")[0]
+      //   MongoClientDB = await client?.db("LampV2")
+      // } else {
+      //   console.log("Database connection failed.")
+      // }
+
+      // const db = process.env.DB?.split("/").reverse()[0]?.split("?")[0]
+      const db = process.env.DB_NAME
+      MongoClientDB = await client?.db(db)
+      console.log("MongoDB is connected and responding")
+    } catch (error) {
+      console.log("Database connection failed.")
+    }
+    //  })
+    if (!!MongoClientDB) {
+      console.group(`MONGODB adapter in use`)
+      const DBs = await MongoClientDB.listCollections().toArray()
+      const dbs: string[] = []
+      for (const db of DBs) {
+        await dbs.push(db.name)
+      }
+
+      // Preparing Mongo Collections
+      if (!dbs.includes("activity_spec")) {
+        console.log("Initializing ActivitySpec database...")
+        await MongoClientDB.createCollection("activity_spec")
+        const database = await MongoClientDB.collection("activity_spec")
+        await database.createIndex({ timestamp: 1 })
+      }
+      console.log("ActivitySpec database online.")
+      if (!dbs.includes("sensor_spec")) {
+        console.log("Initializing SensorSpec database...")
+        await MongoClientDB.createCollection("sensor_spec")
+        const database = await MongoClientDB.collection("sensor_spec")
+        await database.createIndex({ timestamp: 1 })
+      }
+      console.log("SensorSpec database online.")
+      if (!dbs.includes("researcher")) {
+        console.log("Initializing Researcher database...")
+        await MongoClientDB.createCollection("researcher")
+        const database = MongoClientDB.collection("researcher")
+        await database.createIndex({ _id: 1, _parent: 1, timestamp: 1 })
+        await database.createIndex({ _parent: 1, timestamp: 1 })
+        await database.createIndex({ timestamp: 1 })
+      }
+      console.log("Researcher database online.")
+      if (!dbs.includes("study")) {
+        console.log("Initializing Study database...")
+        await MongoClientDB.createCollection("study")
+        const database = MongoClientDB.collection("study")
+        await database.createIndex({ _id: 1, _parent: 1, timestamp: 1 })
+        await database.createIndex({ _parent: 1, timestamp: 1 })
+        await database.createIndex({ timestamp: 1 })
+      }
+
+      console.log("Study database online.")
+      if (!dbs.includes("participant")) {
+        console.log("Initializing Participant database...")
+        await MongoClientDB.createCollection("participant")
+        const database = MongoClientDB.collection("participant")
+        await database.createIndex({ _id: 1, _parent: 1, timestamp: 1 })
+        await database.createIndex({ _parent: 1, timestamp: 1 })
+        await database.createIndex({ timestamp: 1 })
+      }
+      console.log("Participant database online.")
+      if (!dbs.includes("activity")) {
+        console.log("Initializing Activity database...")
+        await MongoClientDB.createCollection("activity")
+        const database = await MongoClientDB.collection("activity")
+        await database.createIndex({ _id: 1, _parent: 1, timestamp: 1 })
+        await database.createIndex({ _parent: 1, timestamp: 1 })
+        await database.createIndex({ timestamp: 1 })
+        await database.createIndex({ _id: 1, timestamp: 1 })
+      }
+      console.log("Activity database online.")
+      if (!dbs.includes("sensor")) {
+        console.log("Initializing Sensor database...")
+        await MongoClientDB.createCollection("sensor")
+        const database = MongoClientDB.collection("sensor")
+        await database.createIndex({ _id: 1, _parent: 1, timestamp: 1 })
+        await database.createIndex({ _parent: 1, timestamp: 1 })
+        await database.createIndex({ timestamp: 1 })
+      }
+      console.log("Sensor database online.")
+      if (!dbs.includes("activity_event")) {
+        console.log("Initializing ActivityEvent database...")
+        await MongoClientDB.createCollection("activity_event")
+        const database = MongoClientDB.collection("activity_event")
+        await database.createIndex({ _parent: -1, activity: -1, timestamp: -1 })
+        await database.createIndex({ _parent: -1, timestamp: -1 })
+      }
+      console.log("ActivityEvent database online.")
+      if (!dbs.includes("sensor_event")) {
+        console.log("Initializing SensorEvent database...")
+        await MongoClientDB.createCollection("sensor_event")
+        const database = MongoClientDB.collection("sensor_event")
+        await database.createIndex({ _parent: -1, sensor: -1, timestamp: -1 })
+        await database.createIndex({ _parent: -1, timestamp: -1 })
+      }
+      console.log("SensorEvent database online.")
+      if (!dbs.includes("tag")) {
+        console.log("Initializing Tag database...")
+        await MongoClientDB.createCollection("tag")
+        const database = MongoClientDB.collection("tag")
+        await database.createIndex({ _parent: 1, type: 1, key: 1 })
+      }
+      console.log("Tag database online.")
+      if (!dbs.includes("tokens")) {
+        console.log("Initializing Tokens database...")
+        await MongoClientDB.createCollection("tokens")
+        const database = MongoClientDB.collection("tokens")
+        await database.createIndex({ token: 1 })
+      }
+      console.log("Tokens database online.")
+      if (!dbs.includes("credential")) {
+        console.log("Initializing Credential database...")
+        await MongoClientDB.createCollection("credential")
+        const database = MongoClientDB.collection("credential")
+        await database.createIndex({ access_key: 1 })
+        await database.createIndex({ origin: 1 })
+        await database.createIndex({ origin: 1, access_key: 1 })
+
+        console.dir(`An initial administrator password was generated and saved for this installation.`)
+        try {
+          // Create a new password and emit it to the console while saving it (to share it with the sysadmin).
+          const p = crypto.randomBytes(32).toString("hex")
+          console.table({ "Administrator Password": p })
+          await auth.api.signUpEmail({
+            body: {
+              email: `admin@digitalpsych.org`,
+              username: "admin",
+              password: p, 
+              name: "admin",
+              description: "System Administrator Credential",
+              additionalSetupExempt: true,
+              origin: null,
+            }
+          })
+        } catch (error) {
+          console.log(error)
+        }
+      }
+      console.log("Credential database online.")
+
+      if (!dbs.includes("account")) {
+        console.log("Initializing account database...")
+        await MongoClientDB.createCollection("account")
+      }
+      console.log("Account database online.")
+      if (!dbs.includes("session")) {
+        console.log("Initializing session database...")
+        await MongoClientDB.createCollection("session")
+      }
+      console.log("Session database online.")
+      
+      if (!dbs.includes("verification")) {
+        console.log("Initializing verification database...")
+        await MongoClientDB.createCollection("verification")
+      }
+      console.log("Verification database online.")
+
+      console.groupEnd()
+      console.groupEnd()
+      console.log("Database verification complete.")
+    } else {
+      console.groupEnd()
+      console.log("Database verification failed.")
+    }
+  }
+}
+
+/**
+ * nats connect
+ */
+async function NatsConnect() {
+  let intervalId = setInterval(async () => {
+    try {
+      nc = await connect({
+        servers: [`${process.env.NATS_SERVER}`],
+        payload: Payload.JSON,
+        maxReconnectAttempts: -1,
+        reconnect: true,
+        reconnectTimeWait: 2000,
+      })
+
+      clearInterval(intervalId)
+      console.log("Connected to nats pub server")
+    } catch (error) {
+      console.log("Error in Connecting to nats pub server")
+    }
+  }, 3000)
+}
+
+/**
+ * GET THE REPOSITORY TO USE(Mongo/Couch)
+ */
+export class Repository {
+  //GET Researcher Repository
+  public getResearcherRepository(): ResearcherInterface {
+    return DB_DRIVER === "couchdb" ? new ResearcherRepository() : new ResearcherRepositoryMongo()
+  }
+  //GET Study Repository
+  public getStudyRepository(): StudyInterface {
+    return DB_DRIVER === "couchdb" ? new StudyRepository() : new StudyRepositoryMongo()
+  }
+  //GET Participant Repository
+  public getParticipantRepository(): ParticipantInterface {
+    return DB_DRIVER === "couchdb" ? new ParticipantRepository() : new ParticipantRepositoryMongo()
+  }
+  //GET Activity Repository
+  public getActivityRepository(): ActivityInterface {
+    return DB_DRIVER === "couchdb" ? new ActivityRepository() : new ActivityRepositoryMongo()
+  }
+  //GET Activity Repository
+  public getSensorRepository(): SensorInterface {
+    return DB_DRIVER === "couchdb" ? new SensorRepository() : new SensorRepositoryMongo()
+  }
+  //GET ActivityEvent Repository
+  public getActivityEventRepository(): ActivityEventInterface {
+    return DB_DRIVER === "couchdb" ? new ActivityEventRepository() : new ActivityEventRepositoryMongo()
+  }
+
+  //GET SensorEvent Repository
+  public getSensorEventRepository(): SensorEventInterface {
+    return DB_DRIVER === "couchdb" ? new SensorEventRepository() : new SensorEventRepositoryMongo()
+  }
+  //GET ActivitySpec Repository
+  public getActivitySpecRepository(): ActivitySpecInterface {
+    return DB_DRIVER === "couchdb" ? new ActivitySpecRepository() : new ActivitySpecRepositoryMongo()
+  }
+
+  //GET SensorSpec Repository
+  public getSensorSpecRepository(): SensorSpecInterface {
+    return DB_DRIVER === "couchdb" ? new SensorSpecRepository() : new SensorSpecRepositoryMongo()
+  }
+
+  //GET Credential Repository
+  public getCredentialRepository(): CredentialInterface {
+    return DB_DRIVER === "couchdb" ? new CredentialRepository() : new CredentialRepositoryMongo()
+  }
+
+  //GET TypeRepository Repository
+  public getTypeRepository(): TypeInterface {
+    return DB_DRIVER === "couchdb" ? new TypeRepository() : new TypeRepositoryMongo()
+    // return new TypeRepositoryMongo()
+  }
+}
+
+/**
+ * Creating singleton class for redis
+ */
+export class RedisFactory {
+  private static instance: ioredis.Redis
+  private constructor() {}
+
+  /**
+   * @returns redis client instance
+   */
+  public static getInstance(): ioredis.Redis {
+    if (this.instance === undefined) {
+      this.instance = new ioredis(process.env.REDIS_HOST as string, {
+        reconnectOnError() {
+          return 1
+        },
+        enableReadyCheck: true,
+      })
+    }
+    return this.instance
+  }
+}

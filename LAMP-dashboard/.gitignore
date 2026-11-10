@@ -1,0 +1,14 @@
+# gitignore: /dashboard
+.DS_Store
+
+# NodeJS + React + Storybook
+node_modules
+npm-debug.log
+build-storybook.log
+build
+storybook-static
+.env
+
+# Editor config files
+.idea
+.vscode

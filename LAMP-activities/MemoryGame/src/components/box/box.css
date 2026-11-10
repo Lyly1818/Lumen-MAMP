@@ -1,0 +1,715 @@
+/**
+ * @file   box.css
+ * @brief  style sheet for Cats and Dogs game game
+ * @date   Mar , 2020
+ * @author ZCO Engineer
+ * @copyright (c) 2020, ZCO
+ */
+:root {
+  --square-size: 84px;
+  --square-font-size: 72px;
+}
+nav a {
+  color: rgba(53, 159, 254, 1);
+  padding: 10px;
+  display: inline-block;
+}
+.timer-div {
+  margin-top: 10px;
+  color: #1a1a2e;
+}
+/* Header icons sit on the blue bar and inherit its white from .back-link /
+   .home-link. These previously forced blue, which the bar would swallow. */
+svg.svg-inline--fa.fa-redo.fa-w-16,
+svg.svg-inline--fa.fa-arrow-left.fa-w-14 {
+  color: inherit;
+}
+
+/* ── Game shell ─────────────────────────────────────── */
+.game-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: #f8f9fb;
+}
+
+/* ── Status bar ─────────────────────────────────────── */
+.status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 8px 16px;
+  min-height: 44px;
+  background: rgba(0, 0, 0, 0.08);
+}
+.level-badge {
+  background: rgba(255, 255, 255, 0.85);
+  color: #1a1a2e;
+  padding: 4px 14px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+@media only screen and (max-width: 500px) {
+  .level-badge {
+    font-size: 11px;
+    padding: 3px 10px;
+  }
+}
+.App {
+  padding-top: 2em;
+  text-align: center;
+}
+.App-logo {
+  -webkit-animation: App-logo-spin infinite 20s linear;
+  animation: App-logo-spin infinite 20s linear;
+  height: 80px;
+}
+.App-header {
+  height: 90px;
+  padding: 20px;
+  color: #fff;
+}
+.App-intro {
+  font-size: large;
+}
+.heading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 52px;
+  color: #fff;
+  font-size: 18px;
+  font-weight: 600;
+  background: rgba(53, 159, 254, 1);
+  position: relative;
+}
+.home-link {
+  position: absolute;
+  right: 0;
+  top: 0;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  color: #fff;
+  cursor: pointer;
+  z-index: 10;
+}
+.home-link-forward {
+  position: absolute;
+  right: 48px;
+  top: 0;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  color: #fff;
+  cursor: pointer;
+  z-index: 10;
+}
+.back-link {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  color: #fff;
+  cursor: pointer;
+  z-index: 10;
+}
+.box-white {
+  height: 128px;
+  width: 128px;
+  background-color: white;
+  border: 1px solid #d5d9e0;
+}
+.box-white svg,
+.box-white img {
+  width: 100% !important;
+  height: 126px !important;
+}
+.box-green {
+  height: 100%;
+  width: 100%;
+  background-color: #40bd40;
+  border: medium #a8a5a5;
+}
+.visible {
+  visibility: visible;
+  opacity: 1;
+  background-color: #40bd40;
+  transition: opacity 2s linear;
+}
+.hidden {
+  visibility: hidden;
+  opacity: 0;
+  transition: visibility 0s 2s, opacity 2s linear;
+}
+.box-table {
+  width: 100% !important;
+  /* position: fixed;
+    top: 18%;
+    left: 5%;
+	right: 5%; */
+  max-width: 350px;
+  max-height: 350px;
+  /* height: 350px !important; */
+}
+box-result-table {
+  width: 100% !important;
+  /* position: fixed;
+    top: 18%;
+    left: 5%;
+	right: 5%; */
+  max-width: 350px;
+  max-height: 350px;
+  height: 350px !important;
+}
+.next-button {
+  bottom: 12%;
+  position: absolute;
+  text-align: center;
+  width: 100%;
+}
+.game-board {
+  color: #1a1a2e;
+  text-align: center;
+  margin-top: 16px;
+}
+/* Gameplay instructions: below the grid on desktop, in the top status bar on
+   mobile (where the stacked grids make the below-grid copy require scrolling). */
+.instructions-below {
+  clear: both;
+}
+.instructions-top {
+  display: none;
+}
+@media only screen and (max-width: 768px) {
+  .instructions-below {
+    display: none;
+  }
+  .instructions-top {
+    display: block;
+    width: 100%;
+  }
+  /* On mobile the instructions take the status-bar slot instead of the trial. */
+  .status-bar .level-badge {
+    display: none;
+  }
+}
+.box-square {
+  transform: translateY(50px);
+  transition: transform 400ms ease-in;
+
+  height: 50px;
+  width: 50px;
+  background-color: #fff;
+}
+.mt-30 {
+  margin-top: 30px;
+}
+.box-game {
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  margin: auto;
+}
+body {
+  font: 18px Helvetica, Arial, sans-serif;
+  margin: 0;
+}
+ol,
+ul {
+  padding-left: 30px;
+}
+.status {
+  margin-bottom: 10px;
+}
+.square {
+  background: #fff;
+  border: 1.7px solid #000;
+  float: left;
+  font-size: var(--square-font-size);
+  font-weight: 700;
+  line-height: var(--square-size);
+  height: var(--square-size);
+  margin-right: -1px;
+  margin-top: -1px;
+  padding: 0;
+  text-align: center;
+  vertical-align: middle;
+  width: var(--square-size);
+  margin-bottom: 0;
+  border-radius: 0;
+}
+.board-row:first-child > .square {
+  border-top: none;
+}
+.board-row:last-child > .square {
+  border-bottom: none;
+}
+.board-row > .square:first-child {
+  border-left: none;
+}
+.board-row > .square:last-child {
+  border-right: none;
+}
+.kbd-navigation .square:focus {
+  background: #ddd;
+}
+.game {
+  -webkit-box-orient: horizontal;
+  -webkit-box-direction: normal;
+  -ms-flex-direction: row;
+  flex-direction: row;
+}
+.board-row,
+.game {
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+}
+.board-row {
+  -webkit-box-pack: center;
+  -ms-flex-pack: center;
+  justify-content: center;
+}
+.board-row:after {
+  clear: both;
+  content: "";
+  display: table;
+}
+.game-info {
+  margin-bottom: 1em;
+}
+
+.box-info {
+  width: 100%;
+  text-align: center;
+  color: #1a1a2e;
+  padding: 10px;
+}
+.box-alert {
+  z-index: 111;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  margin: auto;
+  height: 35px;
+  text-align: center;
+  width: 100%;
+  padding: 0px;
+}
+.box-alert span {
+  background: #26bcff;
+  padding: 10px;
+  display: inline-block;
+  font-size: 14px;
+}
+td {
+  margin: 0;
+  border-spacing: 1px;
+  padding: 0px;
+  border: #ccc solid 1px !important;
+}
+.green-box-square {
+  background-color: #40bd40 !important;
+  background-image: url("data:image/svg+xml,%0A%3Csvg id='Layer_1' data-name='Layer 1' xmlns='http://www.w3.org/2000/svg' viewBox='0 0 397.37 394.67'%3E%3Cdefs%3E%3Cstyle%3E.cls-1%7Bfill:%23fff;%7D%3C/style%3E%3C/defs%3E%3Cpolygon class='cls-1' points='148.72 377.69 29.01 257.99 46.33 240.68 148.24 342.58 352.71 126.47 370.5 143.31 148.72 377.69'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+}
+.red-box-square {
+  background-color: #d40c0c !important;
+  background-image: url("data:image/svg+xml,%0A%3Csvg id='Layer_1' data-name='Layer 1' xmlns='http://www.w3.org/2000/svg' viewBox='0 0 397.37 394.67'%3E%3Cdefs%3E%3Cstyle%3E.cls-1%7Bfill:%23fff;%7D%3C/style%3E%3C/defs%3E%3Cpolygon class='cls-1' points='376.13 44.75 358.17 26.8 204.39 180.58 50.6 26.8 32.65 44.75 186.43 198.54 32.65 352.32 50.6 370.28 204.39 216.49 358.17 370.28 376.13 352.32 222.34 198.54 376.13 44.75'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+}
+.next-button button {
+  border: 0;
+  padding: 10px 20px;
+  background: #359ffe;
+  color: #fff;
+  min-width: 170px;
+  border-radius: 25px;
+}
+@media only screen and (min-width: 768px) {
+  .box-info,
+  .heading,
+  .game-board,
+  .countdown-timer__text {
+    font-size: 24px !important;
+  }
+  .next-button {
+    bottom: 7%;
+  }
+}
+
+@media only screen and (max-width: 767px) {
+  .box-info,
+  .game-board,
+  .countdown-timer__text {
+    font-size: 13px !important;
+  }
+}
+
+@media only screen and (min-width: 769px) {
+  .box-table {
+    position: relative;
+  }
+  .box-game {
+    display: flex;
+    justify-content: center;
+  }
+  .box-table {
+    /* max-width: 400px;
+		max-height: 400px;
+		height: 400px !important; */
+    margin: 0 20px;
+  }
+  .box-info {
+    font-size: 16px !important;
+  }
+  .memory-outer {
+    min-width: 700px;
+  }
+  .secondbox {
+    min-width: 434px;
+  }
+}
+@media only screen and (max-width: 768px) {
+  .box-game {
+    display: inline-flex;
+    justify-content: center;
+    flex-direction: column;
+  }
+  .box-table {
+    margin-bottom: 20px;
+  }
+}
+.memory-outer {
+  background-color: #fff;
+  padding: 15px 30px 15px 30px;
+  border-radius: 5px;
+  text-align: left;
+  width: 100%;
+  max-width: 650px;
+  margin: 0 auto;
+}
+.marginTop10 {
+  margin-top: 12px;
+}
+.react-datepicker__time-list-item {
+  display: flex;
+  align-items: center;
+}
+.question-nav {
+  background-color: #f4f4f4;
+  padding: 15px 20px;
+  margin-bottom: 15px;
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.question-nav p {
+  color: #333;
+  font-size: 14px;
+  margin-top: 0;
+  font-weight: 600;
+  margin-bottom: 5px;
+}
+.react-datepicker__input-container input {
+  border: #ccc solid 1px;
+  padding: 10px;
+  border-radius: 3px;
+  font-size: 14px;
+  min-width: 202px;
+}
+.react-datepicker__input-container input:focus-visible,
+.question-nav select {
+  outline: 0;
+}
+.question-nav select {
+  border: #ccc solid 1px;
+  padding: 10px;
+  border-radius: 3px;
+  min-width: 202px;
+  font-size: 14px;
+}
+.question-nav button {
+  border: #ccc solid 1px;
+  padding: 10px;
+  border-radius: 3px;
+  min-width: 202px;
+  font-size: 14px;
+  text-align: left;
+}
+.react-datepicker--time-only .react-datepicker__triangle {
+  left: -40px !important;
+}
+/* Replaces the MUI <Backdrop>, which supplied the overlay styling itself. */
+.loading-backdrop {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+}
+.inactive {
+  background-color: #fff;
+}
+.error-box {
+  outline: 2px solid red;
+}
+.inactive svg {
+  opacity: 0.2;
+}
+button.primary {
+  background-color: #359ffe;
+  color: #fff;
+  font-size: 16px;
+  padding: 10px 25px;
+  border: 0;
+  font-weight: 600;
+  border-radius: 5px;
+  cursor: pointer;
+}
+button.primary:hover {
+  background-color: #197ed8;
+}
+.text-right {
+  text-align: right;
+}
+.btn-submit {
+  color: #fff;
+  background-color: #359ffe !important;
+  padding: 10px 25px 12px !important;
+  border: 0 !important;
+  border-radius: 25px;
+  font-weight: 600;
+  min-width: 106px;
+}
+
+.btn-submit-disabled {
+  color: #999;
+  background-color: #b6b6b6 !important;
+  padding: 10px 25px 12px !important;
+  border: 0 !important;
+  border-radius: 25px;
+  font-weight: 600;
+  min-width: 106px;
+}
+
+.btn-start-game {
+  color: #359ffe !important;
+  background-color: #fff !important;
+  padding: 10px 25px 12px !important;
+  border: 0 !important;
+  border-radius: 25px;
+  font-weight: 600 !important;
+  min-width: 106px;
+  font-size: 18px !important;
+}
+.btn-start-game:hover {
+  border: #359ffe solid 2px;
+  background-color: #eee !important;
+  color: #359ffe;
+}
+
+.lamp-datepicker {
+  background-color: #fff;
+  height: 40.8px;
+  padding: 8px 10px !important;
+}
+@media only screen and (max-width: 769px) {
+  .box-white {
+    width: 115px;
+    height: 115px;
+  }
+  .box-table tr {
+    height: 115px;
+  }
+  .box-white svg,
+  .box-white img {
+    height: 115px !important;
+  }
+}
+@media only screen and (max-width: 415px) {
+  .question-nav select,
+  .react-datepicker__input-container input {
+    padding: 8px;
+  }
+  .question-nav {
+    display: block;
+    padding: 10px 15px;
+    margin-bottom: 10px;
+  }
+  .box-info {
+    bottom: auto;
+    background: transparent;
+    color: #1a1a2e;
+  }
+  .box-white {
+    width: 85px;
+    height: 85px;
+  }
+  .box-table tr {
+    height: 85px;
+  }
+  .box-white svg,
+  .box-white img {
+    height: 85px !important;
+  }
+}
+@media only screen and (max-width: 376px) {
+  .box-white {
+    width: 70px;
+    height: 70px;
+  }
+  .box-table tr {
+    height: 70px;
+  }
+  .box-white svg,
+  .box-white img {
+    height: 70px !important;
+  }
+}
+.instructionvideo video {
+  width: 90%;
+  max-width: 640px;
+}
+.instructionvideo h5 {
+  margin: 25px 0;
+}
+
+/* ── Instruction modal (opening) ────────────────────── */
+.instruction-modal-header {
+  background: rgba(53, 159, 254, 1);
+  color: #fff;
+  border-bottom: none;
+  padding: 16px 20px;
+}
+.instruction-modal-title {
+  font-size: 22px;
+  font-weight: 600;
+  width: 100%;
+  text-align: center;
+}
+.instruction-modal-body {
+  padding: 24px 20px !important;
+  text-align: center;
+  font-size: 17px;
+  color: #333;
+  line-height: 1.5;
+}
+.instruction-modal-footer {
+  border-top: none;
+  justify-content: center;
+  padding: 8px 20px 20px;
+}
+.instruction-modal-btn {
+  background: rgba(53, 159, 254, 1);
+  border: none;
+  border-radius: 8px;
+  padding: 10px 48px;
+  font-size: 18px;
+  font-weight: 600;
+  min-width: 140px;
+}
+.instruction-modal-btn:hover {
+  background: rgba(33, 139, 234, 1);
+}
+
+/* ── Questionnaire modal ────────────────────────────── */
+.questionnaire-modal-header {
+  background: rgba(53, 159, 254, 1);
+  color: #fff;
+  border-bottom: none;
+  padding: 16px 20px;
+}
+.questionnaire-modal-header .btn-close {
+  filter: brightness(0) invert(1);
+  opacity: 0.8;
+}
+.questionnaire-modal-title {
+  font-size: 22px;
+  font-weight: 600;
+  width: 100%;
+  text-align: center;
+}
+.questionnaire-modal-body {
+  padding: 24px 20px !important;
+}
+.questionnaire-question {
+  text-align: center;
+  margin-bottom: 24px;
+}
+.questionnaire-question:last-child {
+  margin-bottom: 0;
+}
+.questionnaire-label {
+  font-size: 17px;
+  font-weight: 600;
+  color: #333;
+  line-height: 1.4;
+  margin-bottom: 12px;
+}
+.questionnaire-faces {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.questionnaire-modal-footer {
+  border-top: none;
+  justify-content: center;
+  padding: 8px 20px 20px;
+}
+.questionnaire-modal-btn {
+  background: rgba(53, 159, 254, 1);
+  border: none;
+  border-radius: 8px;
+  padding: 10px 48px;
+  font-size: 18px;
+  font-weight: 600;
+  min-width: 140px;
+}
+.questionnaire-modal-btn:hover {
+  background: rgba(33, 139, 234, 1);
+}
+.smileynav .btn {
+  width: 71px;
+  height: 71px;
+  border-radius: 50%;
+  padding: 3px;
+  background-color: #333;
+  border: 0;
+}
+.smileynav .btn.active {
+  background-color: rgba(53, 159, 254, 1);
+  border: 2px solid rgba(53, 159, 254, 1);
+}
+.smileynav .btn svg {
+  width: 100%;
+  height: 100%;
+}
+@media only screen and (max-width: 500px) {
+  .smileynav .btn {
+    width: 41px;
+    height: 41px;
+  }
+}

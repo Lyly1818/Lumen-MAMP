@@ -1,0 +1,206 @@
+package digital.lamp.mindlamp.notification
+
+import android.net.TrafficStats
+import android.util.Log
+import com.google.firebase.messaging.FirebaseMessagingService
+import com.google.firebase.messaging.RemoteMessage
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
+import digital.lamp.lamp_kotlin.lamp_core.apis.SensorEventAPI
+import digital.lamp.lamp_kotlin.lamp_core.models.NotificationData
+import digital.lamp.lamp_kotlin.lamp_core.models.SensorEvent
+import digital.lamp.mindlamp.BuildConfig
+import digital.lamp.mindlamp.appstate.AppState
+import digital.lamp.mindlamp.database.AppDatabase
+import digital.lamp.mindlamp.database.entity.SensorSpecs
+import digital.lamp.mindlamp.model.ActionData
+import digital.lamp.mindlamp.model.DiagnosticData
+import digital.lamp.mindlamp.model.DiagnosticDataContent
+import digital.lamp.mindlamp.model.DiagnosticStorage
+import digital.lamp.mindlamp.model.PendingData
+import digital.lamp.mindlamp.repository.LampForegroundService
+import digital.lamp.mindlamp.utils.DebugLogs
+import digital.lamp.mindlamp.utils.LampLog
+import digital.lamp.mindlamp.utils.NetworkUtils
+import digital.lamp.mindlamp.utils.Sensors
+import digital.lamp.mindlamp.utils.Utils
+import digital.lamp.mindlamp.utils.Utils.isServiceRunning
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
+
+/**
+ * Created by ZCO Engineering Dept. on 23,April,2020
+ * Custom Firebase Messaging Service for handling incoming Firebase Cloud Messages (FCM).
+ */
+
+class LampFirebaseMessagingService : FirebaseMessagingService() {
+    /**
+     * Called when a message is received.
+     *
+     * @param remoteMessage The remote message received from Firebase Cloud Messaging.
+     */
+    override fun onMessageReceived(remoteMessage: RemoteMessage) {
+        super.onMessageReceived(remoteMessage)
+
+        // Push payloads can contain participant identifiers / deep-link URLs. Only persist
+        // them to disk in debug builds to avoid leaking that data into LampLog.txt in release.
+        if (BuildConfig.DEBUG) DebugLogs.writeToFile(remoteMessage.data.toString())
+        val gson = Gson()
+        val actionList: List<ActionData> = remoteMessage.data["actions"]
+            ?.takeIf { it.isNotBlank() }
+            ?.let { raw ->
+                try {
+                    gson.fromJson<List<ActionData>>(
+                        raw,
+                        object : TypeToken<List<ActionData>>() {}.type
+                    ) ?: emptyList()
+                } catch (e: Exception) {
+                    LampLog.e(TAG, "Failed to parse FCM actions payload", e)
+                    emptyList()
+                }
+            } ?: emptyList()
+        //Notification with page and action Button
+        if (remoteMessage.data["page"] != null && remoteMessage.data["page"]?.isNotEmpty() == true && actionList.isNotEmpty()) {
+            LampNotificationManager.notificationWithActionButton(this, remoteMessage, actionList)
+        }
+        //Notification with page and no action Button
+        else if (remoteMessage.data["page"] != null && remoteMessage.data["page"]?.isNotEmpty() == true) {
+            LampNotificationManager.notificationWithoutAction(this, remoteMessage)
+        } else if (remoteMessage.data["command"] != null) {
+            invokeDiagnosticData()
+        }
+        //Notification with page empty or action empty
+        else {
+            LampNotificationManager.notificationOpenApp(this, remoteMessage)
+        }
+
+
+        //Call Analytics API
+        if (AppState.session.isLoggedIn) {
+            val notificationData =
+                NotificationData(
+                    "notification",
+                    remoteMessage.data.toString(),
+                    Utils.getUserAgent()
+                )
+
+            val notificationEvent =
+                SensorEvent(
+                    notificationData,
+                    "lamp.analytics", System.currentTimeMillis().toDouble()
+                )
+            invokeNotificationData(notificationEvent)
+        }
+    }
+    /**
+     * Called when a new token for the default Firebase project is generated.
+     *
+     * @param token The new FCM token.
+     */
+    override fun onNewToken(token: String) {
+        super.onNewToken(token)
+        // Do not log the FCM token value (device-targeting credential); log the event only.
+        Log.e(TAG, "FCM token refreshed")
+    }
+
+    companion object {
+        private val TAG = LampFirebaseMessagingService::class.java.simpleName
+    }
+
+    private fun invokeNotificationData(notificationEventRequest: SensorEvent) {
+        val basic = "Basic ${
+            Utils.toBase64(
+                AppState.session.token + ":" + AppState.session.serverAddress.removePrefix(
+                    "https://"
+                ).removePrefix("http://")
+            )
+        }"
+        Thread {
+            TrafficStats.setThreadStatsTag(Thread.currentThread().id.toInt()) // <---
+            try {
+                // Do network action in this function
+                val state = SensorEventAPI(AppState.session.serverAddress).sensorEventCreate(
+                    AppState.session.userId,
+                    notificationEventRequest,
+                    basic
+                )
+                LampLog.e(TAG, " Notification Data Send -  $state")
+            } catch (e: Exception) {
+
+            }
+        }.start()
+
+
+    }
+
+    private fun invokeDiagnosticData() {
+        val storage = DiagnosticStorage(
+            Utils.getTotalInternalMemorySize(this@LampFirebaseMessagingService),
+            Utils.getAvailableInternalMemorySize(this@LampFirebaseMessagingService)
+        )
+        val sensorDao = AppDatabase.getInstance(this).sensorDao()
+        val analyticsDao = AppDatabase.getInstance(this).analyticsDao()
+        var sensorSpecList = listOf<SensorSpecs>()
+        var configuredSensors = listOf<String>()
+        var pendingRecordCount = 0
+        GlobalScope.launch(Dispatchers.IO) {
+            sensorSpecList = sensorDao.getSensorsList()
+            pendingRecordCount =
+                analyticsDao.getNumberOfRecordsToSync(AppState.session.lastAnalyticsTimestamp)
+
+            val pendingData = PendingData(
+                AppState.session.lastAnalyticsTimestamp.toString(),
+                pendingRecordCount.toString()
+            )
+
+            if (sensorSpecList.isEmpty()) {
+                val sensorsList: Array<Sensors> = Sensors.values()
+                sensorsList.toCollection(ArrayList())
+                configuredSensors = sensorsList.map { it.sensor_name }
+            } else {
+                configuredSensors = sensorSpecList.mapNotNull { it.spec }
+            }
+
+            val diagnosticDataContent = DiagnosticDataContent(
+                storage,
+                configuredSensors,
+                false,
+                AppState.session.isLoggedIn,
+                Utils.isDeviceIsInPowerSaveMode(this@LampFirebaseMessagingService),
+                this@LampFirebaseMessagingService.isServiceRunning(LampForegroundService::class.java),
+                NetworkUtils.isWifiNetworkAvailable(this@LampFirebaseMessagingService),
+                Utils.getLocationAuthorizationStatus(this@LampFirebaseMessagingService),
+                pendingData
+            )
+            val diagnosticData =
+                DiagnosticData("diagnostic", diagnosticDataContent, "Android", Utils.getUserAgent())
+
+            val diagnosticEvent =
+                SensorEvent(
+                    diagnosticData,
+                    "lamp.analytics", System.currentTimeMillis().toDouble()
+                )
+
+            val basic = "Basic ${
+                Utils.toBase64(
+                    AppState.session.token + ":" + AppState.session.serverAddress.removePrefix(
+                        "https://"
+                    ).removePrefix("http://")
+                )
+            }"
+            try {
+                val state = SensorEventAPI(AppState.session.serverAddress).sensorEventCreate(
+                    AppState.session.userId,
+                    diagnosticEvent,
+                    basic
+                )
+                LampLog.e(TAG, "diagnostic data send -  $state")
+                DebugLogs.writeToFile("Diagnostic Data Send $state")
+
+            } catch (e: Exception) {
+
+            }
+        }
+    }
+}
