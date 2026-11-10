@@ -1,0 +1,80 @@
+{
+  "name": "lampconsumer",
+  "version": "1.0.0",
+  "main": "build/app.js",
+  "description": "",
+  "scripts": {
+    "start": "tsc-watch  --onSuccess \"node -r source-map-support/register ./build/app.js\"",
+    "build": "tsc",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "async-mutex": "^0.3.1",
+    "bull": "^3.29.3",
+    "dockerode": "^3.3.1",
+    "dotenv": "^8.2.0",
+    "express": "^4.17.1",
+    "ioredis": "^4.22.0",
+    "lamp-core": "^2021.7.27",
+    "node-fetch": "^2.6.7",
+    "source-map-support": "^0.5.19",
+    "tar-stream": "^2.2.0",
+    "ts-nats": "^1.2.15"
+  },
+  "devDependencies": {
+    "@types/bull": "^3.15.8",
+    "@types/dockerode": "^3.2.3",
+    "@types/dotenv": "^8.2.0",
+    "@types/express": "^4.17.7",
+    "@types/ioredis": "^4.22.0",
+    "@types/node": "^14.18.63",
+    "@types/node-fetch": "^2.6.1",
+    "@types/tar-stream": "^2.2.0",
+    "@typescript-eslint/eslint-plugin": "^5.23.0",
+    "@typescript-eslint/parser": "^5.23.0",
+    "eslint": "^8.1.0",
+    "eslint-config-prettier": "^8.5.0",
+    "eslint-plugin-prettier": "^4.0.0",
+    "prettier": "^2.0.5",
+    "ts-loader": "^8.0.1",
+    "tsc-watch": "^4.5.0",
+    "tslint-config-prettier": "^1.18.0",
+    "tslint-config-standard": "^8.0.1",
+    "typescript": "^4.1.2"
+  },
+  "eslintConfig": {
+    "parser": "@typescript-eslint/parser",
+    "plugins": [
+      "@typescript-eslint"
+    ],
+    "extends": [
+      "plugin:@typescript-eslint/eslint-recommended",
+      "plugin:@typescript-eslint/recommended",
+      "plugin:prettier/recommended",
+      "prettier/@typescript-eslint"
+    ],
+    "rules": {
+      "@typescript-eslint/no-var-requires": 0
+    },
+    "overrides": [
+      {
+        "files": [
+          "**/*.ts?(x)"
+        ],
+        "rules": {
+          "prefer-const": "warn",
+          "@typescript-eslint/camelcase": "off",
+          "@typescript-eslint/no-use-before-define": "off",
+          "@typescript-eslint/no-explicit-any": "off",
+          "@typescript-eslint/consistent-type-assertions": "warn"
+        }
+      }
+    ]
+  },
+  "prettier": {
+    "semi": false,
+    "printWidth": 120
+  }
+}
