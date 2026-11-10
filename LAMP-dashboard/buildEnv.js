@@ -54,7 +54,8 @@ function writeFile() {
           .then((description) => {
             execShellCommand("git rev-parse HEAD ")
             .then((latestCommit) => {
-            execShellCommand("git rev-list --tags --max-count=1")
+            // Falls back to "none" when the repository has no tags, so the .env file is still written
+            execShellCommand("(git rev-list --tags --max-count=1 | grep .) || echo none")
             .then((prodCommit) => {
             const latest = latestCommit === prodCommit
             debug && console.log({ headCount, description })
